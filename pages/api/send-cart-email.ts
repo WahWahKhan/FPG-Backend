@@ -7,16 +7,17 @@ import { put } from '@vercel/blob';
 
 const { pushToQStash, generateCartEmailTemplates } = require('../../lib/qstash-helper');
 
-// ✅ ADD CORS CONFIGURATION (same as send-email.js)
+// âœ… ADD CORS CONFIGURATION (same as send-email.js)
 const allowedOrigins = [
   process.env.LOCAL_DEV_URL,
   process.env.API_BASE_URL,
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:19006',
-  'https://fluidpowergroup.com.au'
+  'https://fluidpowergroup.com.au',
+  'https://www.fluidpowergroup.com.au'
 ];
-const vercelPreviewPattern = /^https:\/\/fpg-frontend-[a-z0-9]+-wahwahkhans-projects\.vercel\.app$/;
+const vercelPreviewPattern = /^https:\/\/fluidpowergroup-[a-z0-9]+-fluidpower\.vercel\.app$/;
 
 // Simple in-memory rate limiting (Phase 1)
 const requestTracker = new Map<string, number[]>();
@@ -42,7 +43,7 @@ const checkRateLimit = (identifier: string): boolean => {
 async function uploadPDFsToBlob(ordersWithPDFs: any[], cartNumber: string) {
   const blobUrls = [];
   
-  console.log('ðŸ“¦ uploadPDFsToBlob for cart:', cartNumber);
+  console.log('Ã°Å¸â€œÂ¦ uploadPDFsToBlob for cart:', cartNumber);
   
   for (let i = 0; i < ordersWithPDFs.length; i++) {
     const order = ordersWithPDFs[i];
@@ -58,7 +59,7 @@ async function uploadPDFsToBlob(ordersWithPDFs: any[], cartNumber: string) {
                         order.type === 'function360_order' ? 'function' : 'unknown';
       const filename = `cart-requests/${cartNumber}/${orderType}-${order.cartId || i}.pdf`;
       
-      console.log(`ðŸ“¤ Uploading PDF to Blob: ${filename} (${(buffer.length / 1024).toFixed(2)}KB)`);
+      console.log(`Ã°Å¸â€œÂ¤ Uploading PDF to Blob: ${filename} (${(buffer.length / 1024).toFixed(2)}KB)`);
       
       const blob = await put(filename, buffer, {
         access: 'public',
@@ -66,7 +67,7 @@ async function uploadPDFsToBlob(ordersWithPDFs: any[], cartNumber: string) {
         contentType: 'application/pdf',
       });
       
-      console.log(`✅ PDF uploaded: ${blob.url}`);
+      console.log(`âœ… PDF uploaded: ${blob.url}`);
       
       const pdfName = order.type === 'trac360_order' 
         ? `TRAC360-${order.cartId || 'order'}.pdf`
@@ -84,7 +85,7 @@ async function uploadPDFsToBlob(ordersWithPDFs: any[], cartNumber: string) {
       });
       
     } catch (error) {
-      console.error(`❌ Failed to upload PDF for cart item ${order.cartId}:`, error);
+      console.error(`âŒ Failed to upload PDF for cart item ${order.cartId}:`, error);
     }
   }
   
@@ -94,7 +95,7 @@ async function uploadPDFsToBlob(ordersWithPDFs: any[], cartNumber: string) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const origin = req.headers.origin;
 
-  // ✅ ADD CORS HANDLING (same pattern as send-email.js)
+  // âœ… ADD CORS HANDLING (same pattern as send-email.js)
   let isOriginAllowed = false;
   if (origin) {
     if (allowedOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
@@ -111,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-  // ✅ Handle OPTIONS preflight request
+  // âœ… Handle OPTIONS preflight request
   if (req.method === 'OPTIONS') {
     if (!isOriginAllowed && origin) {
       console.warn(`CORS preflight denied for origin: ${origin}`);
@@ -121,7 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(204).end();
   }
 
-  // ✅ Only allow POST
+  // âœ… Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -132,7 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ============================================================================
     const requestType = req.body.type || 'cart'; // Default to 'cart' for backwards compatibility
     
-    console.log(`📬 Processing ${requestType} email request...`);
+    console.log(`ðŸ“¬ Processing ${requestType} email request...`);
     
     // ============================================================================
     // INVOICE EMAIL FLOW
@@ -150,12 +151,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(429).json({ error: 'Too many requests. Please try again later.' });
       }
       
-      console.log('📄 Processing invoice email...');
-      console.log(`📧 Customer: ${customerEmail}`);
-      console.log(`🧾 Invoice: ${invoiceData.invoiceNumber}`);
+      console.log('ðŸ“„ Processing invoice email...');
+      console.log(`ðŸ“§ Customer: ${customerEmail}`);
+      console.log(`ðŸ§¾ Invoice: ${invoiceData.invoiceNumber}`);
       
       if (customOrderPdfs && customOrderPdfs.length > 0) {
-        console.log(`📎 Including ${customOrderPdfs.length} custom order PDF(s)`);
+        console.log(`ðŸ“Ž Including ${customOrderPdfs.length} custom order PDF(s)`);
       }
       
       const isLocalMode = process.env.API_BASE_URL?.includes('localhost') || false;
@@ -167,7 +168,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const filename = `invoices/${invoiceData.invoiceNumber}/${invoiceData.invoiceNumber}.pdf`;
       
       if (!isLocalMode) {
-        console.log(`📤 Uploading invoice PDF to Blob: ${filename} (${(buffer.length / 1024).toFixed(2)}KB)`);
+        console.log(`ðŸ“¤ Uploading invoice PDF to Blob: ${filename} (${(buffer.length / 1024).toFixed(2)}KB)`);
         
         const blob = await put(filename, buffer, {
           access: 'public',
@@ -175,7 +176,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           contentType: 'application/pdf',
         });
         
-        console.log(`✅ Invoice PDF uploaded: ${blob.url}`);
+        console.log(`âœ… Invoice PDF uploaded: ${blob.url}`);
         
         blobUrls.push({
           url: blob.url,
@@ -187,7 +188,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // UPLOAD CUSTOM ORDER PDFs TO BLOB
         // ============================================================================
         if (customOrderPdfs && customOrderPdfs.length > 0) {
-          console.log(`📤 Uploading ${customOrderPdfs.length} custom order PDF(s)...`);
+          console.log(`ðŸ“¤ Uploading ${customOrderPdfs.length} custom order PDF(s)...`);
           
           for (const orderPdf of customOrderPdfs) {
             try {
@@ -195,7 +196,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               const orderBuffer = Buffer.from(orderBase64Data, 'base64');
               const orderFilename = `invoices/${invoiceData.invoiceNumber}/${orderPdf.name}`;
               
-              console.log(`📤 Uploading ${orderPdf.name} (${(orderBuffer.length / 1024).toFixed(2)}KB)`);
+              console.log(`ðŸ“¤ Uploading ${orderPdf.name} (${(orderBuffer.length / 1024).toFixed(2)}KB)`);
               
               const orderBlob = await put(orderFilename, orderBuffer, {
                 access: 'public',
@@ -203,7 +204,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 contentType: 'application/pdf',
               });
               
-              console.log(`✅ Custom order PDF uploaded: ${orderBlob.url}`);
+              console.log(`âœ… Custom order PDF uploaded: ${orderBlob.url}`);
               
               blobUrls.push({
                 url: orderBlob.url,
@@ -211,15 +212,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 type: orderPdf.type
               });
             } catch (error) {
-              console.error(`❌ Failed to upload ${orderPdf.name}:`, error);
+              console.error(`âŒ Failed to upload ${orderPdf.name}:`, error);
               // Continue with other PDFs
             }
           }
           
-          console.log(`✅ Uploaded ${blobUrls.length - 1} custom order PDF(s)`);
+          console.log(`âœ… Uploaded ${blobUrls.length - 1} custom order PDF(s)`);
         }
       } else {
-        console.log('🏠 LOCAL MODE: Skipping Blob upload, will use base64 PDFs');
+        console.log('ðŸ  LOCAL MODE: Skipping Blob upload, will use base64 PDFs');
       }
       
       // Generate invoice email templates
@@ -288,7 +289,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       // Send via QStash or direct
       if (isLocalMode) {
-        console.log('🏠 LOCAL MODE: Calling send-email directly...');
+        console.log('ðŸ  LOCAL MODE: Calling send-email directly...');
         
         const emailResponse = await fetch(callbackUrl, {
           method: 'POST',
@@ -309,11 +310,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
         } else {
           const errorText = await emailResponse.text();
-          console.error('❌ Email sending failed:', errorText);
+          console.error('âŒ Email sending failed:', errorText);
           throw new Error('Failed to send invoice email');
         }
       } else {
-        console.log('🚀 PRODUCTION MODE: Using QStash...');
+        console.log('ðŸš€ PRODUCTION MODE: Using QStash...');
         const qstashResult = await pushToQStash(emailData, callbackUrl);
         
         if (qstashResult.success) {
@@ -324,7 +325,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             emailsQueued: true
           });
         } else {
-          console.error(`❌ Failed to queue invoice email:`, qstashResult.error);
+          console.error(`âŒ Failed to queue invoice email:`, qstashResult.error);
           throw new Error('Failed to queue invoice email');
         }
       }
@@ -364,11 +365,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
 
-    console.log('ðŸ“§ Processing cart email request...');
-    console.log(`ðŸ“¦ Cart items: ${items.length}`);
-    console.log(`ðŸ‘¤ Customer: ${userDetails.email}`);
-    console.log(`📋 Send copy to customer: ${sendCopyToCustomer}`);
-    console.log(`ðŸ’¬ Message: ${message ? 'Yes' : 'No'}`);
+    console.log('Ã°Å¸â€œÂ§ Processing cart email request...');
+    console.log(`Ã°Å¸â€œÂ¦ Cart items: ${items.length}`);
+    console.log(`Ã°Å¸â€˜Â¤ Customer: ${userDetails.email}`);
+    console.log(`ðŸ“‹ Send copy to customer: ${sendCopyToCustomer}`);
+    console.log(`Ã°Å¸â€™Â¬ Message: ${message ? 'Yes' : 'No'}`);
 
     // Generate cart number
     const cartNumber = `CART-${Date.now()}`;
@@ -376,7 +377,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Separate cart items by type
     const { pwaItems, websiteItems, trac360Items, function360Items } = separateCartItems(items);
 
-    console.log('ðŸ“Š Cart Composition:');
+    console.log('Ã°Å¸â€œÅ  Cart Composition:');
     console.log(`   Website products: ${websiteItems.length}`);
     console.log(`   PWA orders: ${pwaItems.length}`);
     console.log(`   Trac 360 orders: ${trac360Items.length}`);
@@ -429,16 +430,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (allOrdersWithPDFs.length > 0) {
       if (isLocalMode) {
-        console.log(`📎 LOCAL MODE: Skipping Blob upload for ${allOrdersWithPDFs.length} PDF(s)`);
+        console.log(`ðŸ“Ž LOCAL MODE: Skipping Blob upload for ${allOrdersWithPDFs.length} PDF(s)`);
       } else {
-        console.log(`ðŸ“¤ Uploading ${allOrdersWithPDFs.length} PDF(s) to Vercel Blob...`);
+        console.log(`Ã°Å¸â€œÂ¤ Uploading ${allOrdersWithPDFs.length} PDF(s) to Vercel Blob...`);
         blobUrls = await uploadPDFsToBlob(allOrdersWithPDFs, cartNumber);
-        console.log(`✅ Uploaded ${blobUrls.length} PDF(s) to Blob`);
+        console.log(`âœ… Uploaded ${blobUrls.length} PDF(s) to Blob`);
       }
     }
 
     // Generate email templates
-    console.log('ðŸ“§ Generating cart email templates...');
+    console.log('Ã°Å¸â€œÂ§ Generating cart email templates...');
     const emailTemplates = generateCartEmailTemplates(
       cartNumber,
       userDetails,
@@ -451,7 +452,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       sendCopyToCustomer
     );
 
-    console.log('✅ Email templates generated');
+    console.log('âœ… Email templates generated');
 
     // Prepare email data
     const sanitizedPwaOrders = isLocalMode 
@@ -482,7 +483,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Send via QStash or direct
     if (isLocalMode) {
-      console.log('ðŸ“§ LOCAL MODE: Calling send-email directly...');
+      console.log('Ã°Å¸â€œÂ§ LOCAL MODE: Calling send-email directly...');
       
       try {
         const emailResponse = await fetch(callbackUrl, {
@@ -495,7 +496,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         
         if (emailResponse.ok) {
-          console.log('✅ Cart email sent successfully (local mode)');
+          console.log('âœ… Cart email sent successfully (local mode)');
           
           return res.status(200).json({
             success: true,
@@ -505,21 +506,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
         } else {
           const errorText = await emailResponse.text();
-          console.error('❌ Email sending failed:', errorText);
+          console.error('âŒ Email sending failed:', errorText);
           throw new Error('Failed to send cart email');
         }
       } catch (emailError: any) {
-        console.error('❌ Error calling email API:', emailError);
+        console.error('âŒ Error calling email API:', emailError);
         throw emailError;
       }
       
     } else {
-      console.log('ðŸš€ PRODUCTION MODE: Using QStash...');
+      console.log('Ã°Å¸Å¡â‚¬ PRODUCTION MODE: Using QStash...');
       
       const qstashResult = await pushToQStash(emailData, callbackUrl);
 
       if (qstashResult.success) {
-        console.log(`✅ Cart email queued: ${cartNumber}`);
+        console.log(`âœ… Cart email queued: ${cartNumber}`);
         
         return res.status(200).json({
           success: true,
@@ -527,13 +528,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           emailsQueued: true
         });
       } else {
-        console.error(`❌ Failed to queue cart email:`, qstashResult.error);
+        console.error(`âŒ Failed to queue cart email:`, qstashResult.error);
         throw new Error('Failed to queue cart email');
       }
     }
 
   } catch (error: any) {
-    console.error('❌ Cart email error:', error);
+    console.error('âŒ Cart email error:', error);
     return res.status(500).json({ 
       error: 'Failed to send cart email',
       details: error.message 
