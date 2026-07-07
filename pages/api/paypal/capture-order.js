@@ -6,6 +6,7 @@ import swell from 'swell-node';
 import { put } from '@vercel/blob';
 import { setOrderStatus, getOrderStatus, updateOrderStatus } from './order-status.js';
 import { pushToQStash, generateEmailTemplates } from '../../../lib/qstash-helper';
+import { generateInvoicePDF } from '../../../lib/invoice/invoice-generator';
 
 // ========================================
 // TESTING MODE CONFIGURATION
@@ -473,10 +474,134 @@ export default async function handler(req, res) {
         });
 
         // ============================================================================
+        // STEP 5.5: Generate invoice PDF for all order types
+        // ============================================================================
+
+        // Determine callback URL and local mode early (needed by STEP 5.5 and STEP 6)
+        const callbackUrl = (() => {
+            if (process.env.VERCEL_URL) {
+                return `https://${process.env.VERCEL_URL}/api/send-email`;
+            }
+            if (process.env.API_BASE_URL) {
+                return `${process.env.API_BASE_URL}/api/send-email`;
+            }
+            if (TESTING_MODE) {
+                return process.env.API_BASE_URL_TEST
+                    ? `${process.env.API_BASE_URL_TEST}/api/send-email`
+                    : 'http://localhost:3001/api/send-email';
+            }
+            return 'https://fluidpowergroup.com.au/api/send-email';
+        })();
+
+        const isLocalMode = callbackUrl.includes('localhost') || callbackUrl.includes('127.0.0.1');
+
+        let invoiceBlobUrl = null;
+
+        try {
+            console.log('📄 Generating invoice PDF for order...');
+
+            // PayPal's actual captured amount (authoritative total)
+            const paypalCapturedAmount = parseFloat(
+                captureData.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value ?? '0'
+            );
+
+            const today = new Date().toISOString().split('T')[0];
+
+            // Build line items from all order types
+            const invoiceLineItems = [
+                // Website products
+                ...websiteProducts.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    quantity: item.quantity,
+                    unitPrice: item.price,
+                    subtotal: item.price * item.quantity,
+                })),
+                // HOSE360 orders
+                ...pwaOrders.map(item => ({
+                    id: item.id || 'hose360',
+                    name: item.name || 'HOSE360 Custom Order',
+                    quantity: 1,
+                    unitPrice: item.totalPrice,
+                    subtotal: item.totalPrice,
+                })),
+                // TRAC360 orders
+                ...trac360Orders.map(item => ({
+                    id: item.id || 'trac360',
+                    name: item.name || 'TRAC360 Custom Order',
+                    quantity: 1,
+                    unitPrice: item.totalPrice,
+                    subtotal: item.totalPrice,
+                })),
+                // FUNCTION360 orders
+                ...function360Orders.map(item => ({
+                    id: item.id || 'function360',
+                    name: item.name || 'FUNCTION360 Custom Order',
+                    quantity: 1,
+                    unitPrice: item.totalPrice,
+                    subtotal: item.totalPrice,
+                })),
+            ];
+
+            const invoiceData = {
+                invoiceNumber: `INV-${orderNumber}`,
+                invoiceDate: today,
+                dueDate: today,
+                poNumber: 'N/A',
+                paymentTerms: 'Paid',
+                discount: 0,
+                discountAmount: 0,
+                notes: '',
+                customer: {
+                    name: `${userDetails.firstName} ${userDetails.lastName}`.trim(),
+                    company: userDetails.companyName || '',
+                    email: userDetails.email,
+                    phone: userDetails.phone || '',
+                    address: userDetails.address || '',
+                    suburb: userDetails.city || '',
+                    state: userDetails.state || '',
+                    postcode: userDetails.postcode || '',
+                },
+                shippingAddress: null,
+                items: invoiceLineItems,
+                subtotal: totals.subtotal || 0,
+                shippingCharge: totals.shipping || 0,
+                gst: totals.gst || 0,
+                total: paypalCapturedAmount,
+            };
+
+            const invoicePDF = generateInvoicePDF(invoiceData, captureId);
+            const invoicePDFBase64 = invoicePDF.output('datauristring');
+            const base64Data = invoicePDFBase64.split(',')[1];
+            const invoiceBuffer = Buffer.from(base64Data, 'base64');
+
+            if (!isLocalMode) {
+                const invoiceBlob = await put(
+                    `invoices/INV-${orderNumber}.pdf`,
+                    invoiceBuffer,
+                    { access: 'public', contentType: 'application/pdf' }
+                );
+                invoiceBlobUrl = { url: invoiceBlob.url, filename: `INV-${orderNumber}.pdf`, type: 'invoice' };
+                console.log(`✅ Invoice PDF uploaded: ${invoiceBlob.url}`);
+            } else {
+                console.log('📎 LOCAL MODE: Skipping invoice PDF Blob upload');
+            }
+
+        } catch (invoiceError) {
+            // Non-fatal: log but don't block order — invoice simply won't attach
+            console.error('⚠️ Invoice PDF generation failed (order still processed):', invoiceError);
+        }
+
+        // ============================================================================
         // STEP 6: Upload PDFs to Vercel Blob (handles both PWA and Trac 360)
         // ============================================================================
         
         let blobUrls = [];
+        
+        // Prepend invoice blob if generated
+        if (invoiceBlobUrl) {
+            blobUrls.push(invoiceBlobUrl);
+        }
         
         // NEW: Combine both order types for PDF upload
         const allOrdersWithPDFs = [
@@ -491,26 +616,7 @@ export default async function handler(req, res) {
             hasType: !!o.type
         })));
 
-        // Determine callback URL first (needed for isLocalMode check)
-        const callbackUrl = (() => {
-            if (process.env.VERCEL_URL) {
-                return `https://${process.env.VERCEL_URL}/api/send-email`;
-            }
-            
-            if (process.env.API_BASE_URL) {
-                return `${process.env.API_BASE_URL}/api/send-email`;
-            }
-            
-            if (TESTING_MODE) {
-                return process.env.API_BASE_URL_TEST 
-                    ? `${process.env.API_BASE_URL_TEST}/api/send-email`
-                    : 'http://localhost:3001/api/send-email';
-            }
-            
-            return 'https://fluidpowergroup.com.au/api/send-email';
-        })();
-
-        const isLocalMode = callbackUrl.includes('localhost') || callbackUrl.includes('127.0.0.1');
+        // callbackUrl and isLocalMode declared in STEP 5.5 above
         
         if (allOrdersWithPDFs.length > 0) {
             if (isLocalMode) {
@@ -519,9 +625,10 @@ export default async function handler(req, res) {
                 console.log(`📎 PDFs will be attached directly to emails from base64 data`);
             } else {
                 // Production mode: Upload to Vercel Blob
-            console.log(`📤 Uploading ${allOrdersWithPDFs.length} PDF(s) to Vercel Blob...`);
-            blobUrls = await uploadPDFsToBlob(allOrdersWithPDFs, orderNumber);
-            console.log(`✅ Uploaded ${blobUrls.length} PDF(s) to Blob`);
+                console.log(`📤 Uploading ${allOrdersWithPDFs.length} PDF(s) to Vercel Blob...`);
+                const uploadedBlobs = await uploadPDFsToBlob(allOrdersWithPDFs, orderNumber);
+                blobUrls = [...blobUrls, ...uploadedBlobs];
+                console.log(`✅ Uploaded ${uploadedBlobs.length} PDF(s) to Blob, total blobs: ${blobUrls.length}`);
             }
         }
 

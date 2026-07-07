@@ -14,8 +14,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:19006',
-  'https://fluidpowergroup.com.au',
-  'https://www.fluidpowergroup.com.au'
+  'https://fluidpowergroup.com.au'
 ];
 const vercelPreviewPattern = /^https:\/\/fluidpowergroup-[a-z0-9]+-fluidpower\.vercel\.app$/;
 
@@ -136,98 +135,108 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`ðŸ“¬ Processing ${requestType} email request...`);
     
     // ============================================================================
-    // INVOICE EMAIL FLOW
+    // INVOICE / QUOTE EMAIL FLOW (shared - these two document types only differ
+    // in: document number field, Blob folder, and which email template to use)
     // ============================================================================
-    if (requestType === 'invoice') {
-      const { invoiceData, pdfData, customerEmail, customOrderPdfs } = req.body;
-      
-      if (!invoiceData || !pdfData || !customerEmail) {
-        return res.status(400).json({ error: 'Invoice data, PDF, and customer email are required' });
+    if (requestType === 'invoice' || requestType === 'quote') {
+      const isQuote = requestType === 'quote';
+      const { invoiceData, quoteData, pdfData, customerEmail, customOrderPdfs } = req.body;
+      const documentData = isQuote ? quoteData : invoiceData;
+
+      if (!documentData || !pdfData || !customerEmail) {
+        return res.status(400).json({
+          error: `${isQuote ? 'Quote' : 'Invoice'} data, PDF, and customer email are required`
+        });
       }
-      
+
       // Rate limiting
       const rateLimitKey = customerEmail.toLowerCase();
       if (!checkRateLimit(rateLimitKey)) {
         return res.status(429).json({ error: 'Too many requests. Please try again later.' });
       }
-      
-      console.log('ðŸ“„ Processing invoice email...');
-      console.log(`ðŸ“§ Customer: ${customerEmail}`);
-      console.log(`ðŸ§¾ Invoice: ${invoiceData.invoiceNumber}`);
-      
+
+      const documentNumber = isQuote ? documentData.quoteNumber : documentData.invoiceNumber;
+      const folder = isQuote ? 'quotes' : 'invoices';
+
+      console.log(`Processing ${isQuote ? 'quote' : 'invoice'} email...`);
+      console.log(`Customer: ${customerEmail}`);
+      console.log(`${isQuote ? 'Quote' : 'Invoice'}: ${documentNumber}`);
+
       if (customOrderPdfs && customOrderPdfs.length > 0) {
-        console.log(`ðŸ“Ž Including ${customOrderPdfs.length} custom order PDF(s)`);
+        console.log(`Including ${customOrderPdfs.length} custom order PDF(s)`);
       }
-      
+
       const isLocalMode = process.env.API_BASE_URL?.includes('localhost') || false;
       let blobUrls = [];
-      
-      // Upload invoice PDF to Blob
+
+      // Upload document PDF to Blob
       const base64Data = pdfData.split(',')[1];
       const buffer = Buffer.from(base64Data, 'base64');
-      const filename = `invoices/${invoiceData.invoiceNumber}/${invoiceData.invoiceNumber}.pdf`;
-      
+      const filename = `${folder}/${documentNumber}/${documentNumber}.pdf`;
+
       if (!isLocalMode) {
-        console.log(`ðŸ“¤ Uploading invoice PDF to Blob: ${filename} (${(buffer.length / 1024).toFixed(2)}KB)`);
-        
+        console.log(`Uploading ${isQuote ? 'quote' : 'invoice'} PDF to Blob: ${filename} (${(buffer.length / 1024).toFixed(2)}KB)`);
+
         const blob = await put(filename, buffer, {
           access: 'public',
           addRandomSuffix: true,
           contentType: 'application/pdf',
         });
-        
-        console.log(`âœ… Invoice PDF uploaded: ${blob.url}`);
-        
+
+        console.log(`${isQuote ? 'Quote' : 'Invoice'} PDF uploaded: ${blob.url}`);
+
         blobUrls.push({
           url: blob.url,
-          name: `${invoiceData.invoiceNumber}.pdf`,
-          type: 'invoice'
+          name: `${documentNumber}.pdf`,
+          type: requestType
         });
-        
+
         // ============================================================================
-        // UPLOAD CUSTOM ORDER PDFs TO BLOB
+        // UPLOAD CUSTOM ORDER PDFs TO BLOB (invoice only - quotes won't carry these)
         // ============================================================================
         if (customOrderPdfs && customOrderPdfs.length > 0) {
-          console.log(`ðŸ“¤ Uploading ${customOrderPdfs.length} custom order PDF(s)...`);
-          
+          console.log(`Uploading ${customOrderPdfs.length} custom order PDF(s)...`);
+
           for (const orderPdf of customOrderPdfs) {
             try {
               const orderBase64Data = orderPdf.pdfDataUrl.split(',')[1];
               const orderBuffer = Buffer.from(orderBase64Data, 'base64');
-              const orderFilename = `invoices/${invoiceData.invoiceNumber}/${orderPdf.name}`;
-              
-              console.log(`ðŸ“¤ Uploading ${orderPdf.name} (${(orderBuffer.length / 1024).toFixed(2)}KB)`);
-              
+              const orderFilename = `${folder}/${documentNumber}/${orderPdf.name}`;
+
+              console.log(`Uploading ${orderPdf.name} (${(orderBuffer.length / 1024).toFixed(2)}KB)`);
+
               const orderBlob = await put(orderFilename, orderBuffer, {
                 access: 'public',
                 addRandomSuffix: true,
                 contentType: 'application/pdf',
               });
-              
-              console.log(`âœ… Custom order PDF uploaded: ${orderBlob.url}`);
-              
+
+              console.log(`Custom order PDF uploaded: ${orderBlob.url}`);
+
               blobUrls.push({
                 url: orderBlob.url,
                 name: orderPdf.name,
                 type: orderPdf.type
               });
             } catch (error) {
-              console.error(`âŒ Failed to upload ${orderPdf.name}:`, error);
+              console.error(`Failed to upload ${orderPdf.name}:`, error);
               // Continue with other PDFs
             }
           }
-          
-          console.log(`âœ… Uploaded ${blobUrls.length - 1} custom order PDF(s)`);
+
+          console.log(`Uploaded ${blobUrls.length - 1} custom order PDF(s)`);
         }
       } else {
-        console.log('ðŸ  LOCAL MODE: Skipping Blob upload, will use base64 PDFs');
+        console.log('LOCAL MODE: Skipping Blob upload, will use base64 PDFs');
       }
-      
-      // Generate invoice email templates
-      const { generateInvoiceEmailTemplates } = require('../../lib/qstash-helper');
+
+      // Generate email templates - only point where invoice/quote diverge in logic
+      const { generateInvoiceEmailTemplates, generateQuoteEmailTemplates } = require('../../lib/qstash-helper');
       const customOrderPdfsCount = customOrderPdfs && customOrderPdfs.length > 0 ? customOrderPdfs.length : 0;
-      const emailTemplates = generateInvoiceEmailTemplates(invoiceData, customOrderPdfsCount);
-      
+      const emailTemplates = isQuote
+        ? generateQuoteEmailTemplates(documentData)
+        : generateInvoiceEmailTemplates(documentData, customOrderPdfsCount);
+
       // Determine callback URL
       const callbackUrl = (() => {
         if (process.env.VERCEL_URL) {
@@ -244,26 +253,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         return 'https://fluidpowergroup.com.au/api/send-email';
       })();
-      
+
       // Prepare email data
       const emailData = {
-        orderNumber: invoiceData.invoiceNumber,
+        orderNumber: documentNumber,
         userDetails: {
-          firstName: invoiceData.customer.name.split(' ')[0],
-          lastName: invoiceData.customer.name.split(' ').slice(1).join(' ') || '',
+          firstName: documentData.customer.name.split(' ')[0],
+          lastName: documentData.customer.name.split(' ').slice(1).join(' ') || '',
           email: customerEmail,
-          phone: invoiceData.customer.phone,
-          address: invoiceData.customer.address,
-          city: invoiceData.customer.suburb,
-          state: invoiceData.customer.state,
-          postcode: invoiceData.customer.postcode,
+          phone: documentData.customer.phone,
+          address: documentData.customer.address,
+          city: documentData.customer.suburb,
+          state: documentData.customer.state,
+          postcode: documentData.customer.postcode,
           country: 'Australia',
-          companyName: invoiceData.customer.company
+          companyName: documentData.customer.company
         },
         blobUrls: isLocalMode ? [] : blobUrls,
         pdfAttachments: isLocalMode ? [
           {
-            name: `${invoiceData.invoiceNumber}.pdf`,
+            name: `${documentNumber}.pdf`,
             contentBytes: base64Data
           },
           // Add custom order PDFs for local mode
@@ -276,21 +285,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           )
         ] : undefined,
         totals: {
-          subtotal: invoiceData.subtotal,
-          gst: invoiceData.gst,
-          total: invoiceData.total,
-          discount: invoiceData.discountAmount,
+          subtotal: documentData.subtotal,
+          gst: documentData.gst,
+          total: documentData.total,
+          discount: documentData.discountAmount,
           shipping: 0
         },
         testingMode: process.env.TESTING_MODE === 'true',
         emailTemplates: emailTemplates,
         userEmail: customerEmail
       };
-      
+
       // Send via QStash or direct
       if (isLocalMode) {
-        console.log('ðŸ  LOCAL MODE: Calling send-email directly...');
-        
+        console.log('LOCAL MODE: Calling send-email directly...');
+
         const emailResponse = await fetch(callbackUrl, {
           method: 'POST',
           headers: { 
@@ -299,34 +308,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
           body: JSON.stringify(emailData)
         });
-        
+
         if (emailResponse.ok) {
-          console.log('✅ Invoice email sent successfully (local mode)');
+          console.log(`${isQuote ? 'Quote' : 'Invoice'} email sent successfully (local mode)`);
           return res.status(200).json({
             success: true,
-            invoiceNumber: invoiceData.invoiceNumber,
+            ...(isQuote ? { quoteNumber: documentNumber } : { invoiceNumber: documentNumber }),
             emailsSent: true,
             localMode: true
           });
         } else {
           const errorText = await emailResponse.text();
-          console.error('âŒ Email sending failed:', errorText);
-          throw new Error('Failed to send invoice email');
+          console.error('Email sending failed:', errorText);
+          throw new Error(`Failed to send ${isQuote ? 'quote' : 'invoice'} email`);
         }
       } else {
-        console.log('ðŸš€ PRODUCTION MODE: Using QStash...');
+        console.log('PRODUCTION MODE: Using QStash...');
         const qstashResult = await pushToQStash(emailData, callbackUrl);
-        
+
         if (qstashResult.success) {
-          console.log(`✅ Invoice email queued: ${invoiceData.invoiceNumber}`);
+          console.log(`${isQuote ? 'Quote' : 'Invoice'} email queued: ${documentNumber}`);
           return res.status(200).json({
             success: true,
-            invoiceNumber: invoiceData.invoiceNumber,
+            ...(isQuote ? { quoteNumber: documentNumber } : { invoiceNumber: documentNumber }),
             emailsQueued: true
           });
         } else {
-          console.error(`âŒ Failed to queue invoice email:`, qstashResult.error);
-          throw new Error('Failed to queue invoice email');
+          console.error(`Failed to queue ${isQuote ? 'quote' : 'invoice'} email:`, qstashResult.error);
+          throw new Error(`Failed to queue ${isQuote ? 'quote' : 'invoice'} email`);
         }
       }
     }
