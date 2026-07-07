@@ -14,7 +14,8 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:19006',
-  'https://fluidpowergroup.com.au'
+  'https://fluidpowergroup.com.au',
+  'https://www.fluidpowergroup.com.au'
 ];
 const vercelPreviewPattern = /^https:\/\/fluidpowergroup-[a-z0-9]+-fluidpower\.vercel\.app$/;
 
