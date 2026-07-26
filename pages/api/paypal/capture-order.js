@@ -7,6 +7,101 @@ import { put } from '@vercel/blob';
 import { setOrderStatus, getOrderStatus, updateOrderStatus } from './order-status.js';
 import { pushToQStash, generateEmailTemplates } from '../../../lib/qstash-helper';
 import { generateInvoicePDF } from '../../../lib/invoice/invoice-generator';
+import * as quoteStore from '../../../lib/quote-store';
+import { equalToCent } from '../../../lib/pricing/money';
+
+// ============================================================================
+// SERVER-AUTHORITY: rebuild the order arrays from the persisted server QUOTE.
+// ----------------------------------------------------------------------------
+// In the secure flow the browser sends NO prices. Money + inventory ids come
+// from the quote (trusted); PDFs and display names come from `attachments`
+// (non-price data, matched by cartId). This produces exactly the same array
+// shapes the rest of the handler already expects, so all downstream
+// inventory / invoice / PDF / email machinery runs unchanged — just driven by
+// server-authoritative numbers.
+// ============================================================================
+function rebuildOrdersFromQuote(quote, attachments) {
+    const pricing = quote.pricing || {};
+    const lines = Array.isArray(pricing.lines) ? pricing.lines : [];
+    const attByCartId = new Map((attachments || []).map((a) => [String(a.cartId), a]));
+    const att = (cartId) => attByCartId.get(String(cartId)) || {};
+
+    const websiteProducts = lines
+        .filter((l) => l.kind === 'website')
+        .map((l) => {
+            const a = att(l.cartId);
+            return {
+                id: (l.swellProductIds && l.swellProductIds[0]) || l.cartId,
+                name: l.name || a.name || 'Product',
+                quantity: l.quantity || 1,
+                price: l.unitPrice != null ? l.unitPrice : l.amount,
+                stock: 0,
+                image: a.image || l.image || '',
+            };
+        });
+
+    const pwaOrders = lines
+        .filter((l) => l.kind === 'pwa')
+        .map((l) => {
+            const a = att(l.cartId);
+            return {
+                id: 'hose360',
+                type: 'pwa_order',
+                name: a.name || 'HOSE360 Custom Order',
+                totalPrice: l.amount,
+                quantity: 1,
+                image: a.image || '',
+                pdfDataUrl: a.pdfDataUrl,
+                cartId: l.cartId,
+                pwaOrderNumber: `PWA-${l.cartId}`,
+            };
+        });
+
+    const trac360Orders = lines
+        .filter((l) => l.kind === 'trac360')
+        .map((l) => {
+            const a = att(l.cartId);
+            return {
+                id: 'trac360',
+                type: 'trac360_order',
+                name: a.name || 'TRAC360 Custom Order',
+                totalPrice: l.amount,
+                quantity: 1,
+                image: a.image || '',
+                pdfDataUrl: a.pdfDataUrl,
+                tractorConfig: { productIds: l.swellProductIds || [] },
+                cartId: l.cartId,
+                trac360OrderNumber: `TRAC-${l.cartId}`,
+            };
+        });
+
+    const function360Orders = lines
+        .filter((l) => l.kind === 'function360')
+        .map((l) => {
+            const a = att(l.cartId);
+            return {
+                id: 'function360',
+                type: 'function360_order',
+                name: a.name || 'FUNCTION360 Custom Order',
+                totalPrice: l.amount,
+                quantity: 1,
+                image: a.image || '',
+                pdfDataUrl: a.pdfDataUrl,
+                configuration: { swellProductIds: l.swellProductIds || [] },
+                cartId: l.cartId,
+                function360OrderNumber: `FUNC-${l.cartId}`,
+            };
+        });
+
+    const totals = {
+        subtotal: pricing.subtotal || 0,
+        shipping: pricing.shipping || 0,
+        gst: pricing.gst || 0,
+        total: pricing.total || 0,
+    };
+
+    return { websiteProducts, pwaOrders, trac360Orders, function360Orders, totals };
+}
 
 // ========================================
 // TESTING MODE CONFIGURATION
@@ -269,18 +364,124 @@ export default async function handler(req, res) {
     console.log("📥 Received capture-order request");
     if (TESTING_MODE) console.log("🧪 Running in TESTING MODE");
 
-    // NEW: Extract trac360Orders from request body
-    const {
-        orderID,
-        payerID,
-        orderNumber,
-        userDetails,
+    // Extract request body. NOTE: websiteProducts/pwaOrders/... and totals are
+    // `let` because in the SECURE (server-priced) flow they are REPLACED with
+    // values rebuilt from the trusted quote — the client-sent prices (if any)
+    // are ignored entirely.
+    let {
         websiteProducts = [],
         pwaOrders = [],
         trac360Orders = [],
         function360Orders = [],
         totals
     } = req.body;
+    const {
+        orderID,
+        payerID,
+        orderNumber,
+        userDetails,
+        // Server-authority flow additions:
+        attachments = [],   // [{ cartId, name, image, type, pdfDataUrl }] — non-price data for PDFs/labels
+    } = req.body;
+
+    if (!orderID) {
+        console.error("❌ Missing PayPal orderID");
+        return res.status(400).json({ success: false, error: 'Missing required PayPal orderID.' });
+    }
+
+    // ============================================================================
+    // Does this request carry CLIENT-SUPPLIED money? (line items or totals)
+    // ----------------------------------------------------------------------------
+    // This is the price-injection vector: in the legacy shape these arrays and
+    // `totals` drive inventory, the invoice and the confirmation emails. In the
+    // secure flow they are ignored entirely (rebuilt from the quote), and the
+    // standalone HOSE360 PWA sends none of them at all — so a payload that
+    // contains them WITHOUT a matching server quote can only be a forgery.
+    // ============================================================================
+    const nonEmpty = (v) => Array.isArray(v) && v.length > 0;
+    const clientPricedPayload =
+        nonEmpty(req.body.websiteProducts) ||
+        nonEmpty(req.body.pwaOrders) ||
+        nonEmpty(req.body.trac360Orders) ||
+        nonEmpty(req.body.function360Orders) ||
+        (req.body.totals !== undefined && req.body.totals !== null);
+
+    // ============================================================================
+    // SECURE FLOW DETECTION: does a server quote exist for this PayPal order?
+    // If so, this order was created by our server-authority create-order and we
+    // enforce reconciliation.
+    // ============================================================================
+    let secureFlow = false;
+    let serverQuote = null;
+    let quoteLookupFailed = false;
+    let processedRecord = null;
+    if (quoteStore.isConfigured()) {
+        try {
+            serverQuote = await quoteStore.getQuote(orderID);
+            // Read the idempotency marker up front too: a successful secure
+            // capture DELETES its quote, so a retry/duplicate POST arrives
+            // looking quote-less. Answering it here keeps that retry on the
+            // friendly "already processed" path instead of the guard below.
+            processedRecord = await quoteStore.getProcessedRecord(orderID);
+        } catch (e) {
+            quoteLookupFailed = true;
+            console.error('⚠️ Failed to load server quote:', e.message);
+        }
+    } else {
+        quoteLookupFailed = true;
+        console.warn('⚠️ Quote store not configured — cannot verify server-priced orders.');
+    }
+
+    if (processedRecord) {
+        console.warn(`⚠️ (Redis) PayPal order ${orderID} already processed as ${processedRecord.internalOrderNumber}`);
+        return res.status(200).json({
+            success: true,
+            message: 'Order already processed',
+            duplicate: true,
+            orderNumber: processedRecord.internalOrderNumber,
+            paypalOrderID: orderID,
+        });
+    }
+
+    if (serverQuote) {
+        secureFlow = true;
+        console.log(`🔒 SECURE server-priced flow for order ${orderID} (charge A$${serverQuote.amountValue})`);
+        const rebuilt = rebuildOrdersFromQuote(serverQuote, attachments);
+        websiteProducts = rebuilt.websiteProducts;
+        pwaOrders = rebuilt.pwaOrders;
+        trac360Orders = rebuilt.trac360Orders;
+        function360Orders = rebuilt.function360Orders;
+        totals = rebuilt.totals; // server-authoritative breakdown
+    } else if (clientPricedPayload) {
+        // ========================================================================
+        // LEGACY CLIENT-PRICED FALLBACK — CLOSED (price tampering fix).
+        // ------------------------------------------------------------------------
+        // No server quote backs this orderID, yet the caller is supplying its own
+        // line items/totals. Capturing here would bank whatever amount the caller
+        // had PayPal authorise (they can create an order for any amount with the
+        // public client id) while we fulfil, decrement stock and invoice against
+        // their numbers. Refuse: a CAPTURE-intent order simply expires uncaptured,
+        // so nothing is charged.
+        // ========================================================================
+        if (quoteLookupFailed) {
+            // We could not READ the quote — don't punish a genuine buyer for an
+            // infrastructure blip, and don't capture something we can't verify.
+            console.error(`🚨 Cannot verify price for ${orderID} (quote store unreachable). Refusing to capture.`);
+            return res.status(503).json({
+                success: false,
+                error: 'We could not verify your order total just now. Your payment was NOT taken — please try again in a moment.',
+            });
+        }
+        console.error(`🚨 REJECTED client-priced capture for ${orderID}: no server quote exists for this order. Payload origin: ${origin || 'none'}`);
+        return res.status(400).json({
+            success: false,
+            error: 'This order could not be verified against a server-calculated price. Your payment was NOT taken. Please start the checkout again.',
+        });
+    } else {
+        // Price-less legacy caller (the standalone HOSE360 PWA, which creates and
+        // captures its own PayPal order and sends no line items or totals).
+        console.log(`ℹ️ No server quote for ${orderID} — price-less legacy capture path.`);
+    }
 
     // NEW: Log order composition
     console.log('📊 Order Composition:');
@@ -289,16 +490,16 @@ export default async function handler(req, res) {
     console.log(`   Trac 360 orders: ${trac360Orders.length}`);
     console.log(`   Function 360 orders: ${function360Orders.length}`)
 
-    if (!orderID) {
-        console.error("❌ Missing PayPal orderID");
-        return res.status(400).json({ success: false, error: 'Missing required PayPal orderID.' });
-    }
-
     try {
         // ============================================================================
         // STEP 1: Check for duplicate processing
         // ============================================================================
-        
+
+        // NOTE: the Redis-backed idempotency check (which survives serverless
+        // instances) now runs earlier, alongside the quote lookup — a successful
+        // secure capture deletes its quote, so the duplicate must be recognised
+        // before the client-priced guard sees a quote-less payload.
+
         if (isPayPalOrderProcessed(orderID)) {
             const existingOrder = processedPayPalOrders.get(orderID);
             console.warn(`⚠️ PayPal order ${orderID} already processed as ${existingOrder.internalOrderNumber}`);
@@ -329,7 +530,41 @@ export default async function handler(req, res) {
         
         console.log(`💳 Capturing PayPal order: ${orderID}`);
         const accessToken = await getPayPalAccessToken(PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_API_BASE);
-        
+
+        // ============================================================================
+        // SECURE FLOW: reconcile the PayPal order amount against the server quote
+        // BEFORE capturing. Since we created the order for quote.amountValue, the
+        // authorized amount must equal it — a mismatch means something is wrong, so
+        // we refuse to capture (a CAPTURE-intent order simply expires uncaptured).
+        // ============================================================================
+        if (secureFlow) {
+            const orderRes = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders/${orderID}`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            const orderData = await orderRes.json().catch(() => ({}));
+            const authorizedValue = orderData?.purchase_units?.[0]?.amount?.value;
+
+            if (!orderRes.ok || authorizedValue === undefined) {
+                console.error(`❌ Could not read PayPal order ${orderID} for reconciliation`, orderData);
+                setOrderStatus(orderNumber, 'failed', { error: 'Could not verify order amount before capture' });
+                return res.status(502).json({ success: false, error: 'Could not verify order amount. Payment not captured.' });
+            }
+
+            if (!equalToCent(authorizedValue, serverQuote.amountValue)) {
+                console.error(`🚨 AMOUNT MISMATCH for ${orderID}: PayPal=${authorizedValue} quote=${serverQuote.amountValue}. Refusing to capture.`);
+                setOrderStatus(orderNumber, 'failed', {
+                    error: 'Order amount does not match server price',
+                    paypalAmount: authorizedValue,
+                    quoteAmount: serverQuote.amountValue,
+                });
+                return res.status(400).json({
+                    success: false,
+                    error: 'Order amount does not match the server-calculated price. Payment was not taken.',
+                });
+            }
+            console.log(`✅ Pre-capture reconciliation OK: A$${authorizedValue} == quote A$${serverQuote.amountValue}`);
+        }
+
         const captureUrl = `${PAYPAL_API_BASE}/v2/checkout/orders/${orderID}/capture`;
         const captureResponse = await fetch(captureUrl, {
             method: 'POST',
@@ -401,10 +636,47 @@ export default async function handler(req, res) {
         }
 
         // ============================================================================
+        // SECURE FLOW: belt-and-suspenders — verify the CAPTURED amount equals the
+        // quote. (It will, since we reconciled pre-capture, but this catches any
+        // PayPal-side surprise before we fulfil.) On mismatch, best-effort refund.
+        // ============================================================================
+        if (secureFlow) {
+            const capturedValue = captureData.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value;
+            if (capturedValue === undefined || !equalToCent(capturedValue, serverQuote.amountValue)) {
+                console.error(`🚨 POST-CAPTURE MISMATCH for ${orderID}: captured=${capturedValue} quote=${serverQuote.amountValue}`);
+                if (captureId) {
+                    try {
+                        await fetch(`${PAYPAL_API_BASE}/v2/payments/captures/${captureId}/refund`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                        });
+                        console.log(`↩️ Refund issued for mismatched capture ${captureId}`);
+                    } catch (refundErr) {
+                        console.error('❌ Refund attempt failed:', refundErr.message);
+                    }
+                }
+                setOrderStatus(orderNumber, 'failed', {
+                    error: 'Captured amount did not match server price; refund attempted',
+                    capturedAmount: capturedValue,
+                    quoteAmount: serverQuote.amountValue,
+                });
+                return res.status(500).json({ success: false, error: 'Payment amount mismatch detected; the charge has been refunded.' });
+            }
+        }
+
+        // ============================================================================
         // STEP 4: Mark order as processed
         // ============================================================================
-        
+
         markPayPalOrderProcessed(orderID, orderNumber);
+        if (secureFlow) {
+            try {
+                await quoteStore.markOrderProcessed(orderID, orderNumber);
+                await quoteStore.deleteQuote(orderID); // one-time use
+            } catch (e) {
+                console.error('⚠️ Failed to persist Redis idempotency marker:', e.message);
+            }
+        }
 
         // ============================================================================
         // STEP 5: Update inventory for all product types

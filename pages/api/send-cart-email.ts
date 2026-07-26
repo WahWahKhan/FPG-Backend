@@ -7,7 +7,7 @@ import { put } from '@vercel/blob';
 
 const { pushToQStash, generateCartEmailTemplates } = require('../../lib/qstash-helper');
 
-// âœ… ADD CORS CONFIGURATION (same as send-email.js)
+// [OK] ADD CORS CONFIGURATION (same as send-email.js)
 const allowedOrigins = [
   process.env.LOCAL_DEV_URL,
   process.env.API_BASE_URL,
@@ -43,7 +43,7 @@ const checkRateLimit = (identifier: string): boolean => {
 async function uploadPDFsToBlob(ordersWithPDFs: any[], cartNumber: string) {
   const blobUrls = [];
   
-  console.log('Ã°Å¸â€œÂ¦ uploadPDFsToBlob for cart:', cartNumber);
+  console.log('[PKG] uploadPDFsToBlob for cart:', cartNumber);
   
   for (let i = 0; i < ordersWithPDFs.length; i++) {
     const order = ordersWithPDFs[i];
@@ -59,7 +59,7 @@ async function uploadPDFsToBlob(ordersWithPDFs: any[], cartNumber: string) {
                         order.type === 'function360_order' ? 'function' : 'unknown';
       const filename = `cart-requests/${cartNumber}/${orderType}-${order.cartId || i}.pdf`;
       
-      console.log(`Ã°Å¸â€œÂ¤ Uploading PDF to Blob: ${filename} (${(buffer.length / 1024).toFixed(2)}KB)`);
+      console.log(`[SEND] Uploading PDF to Blob: ${filename} (${(buffer.length / 1024).toFixed(2)}KB)`);
       
       const blob = await put(filename, buffer, {
         access: 'public',
@@ -67,7 +67,7 @@ async function uploadPDFsToBlob(ordersWithPDFs: any[], cartNumber: string) {
         contentType: 'application/pdf',
       });
       
-      console.log(`âœ… PDF uploaded: ${blob.url}`);
+      console.log(`[OK] PDF uploaded: ${blob.url}`);
       
       const pdfName = order.type === 'trac360_order' 
         ? `TRAC360-${order.cartId || 'order'}.pdf`
@@ -85,7 +85,7 @@ async function uploadPDFsToBlob(ordersWithPDFs: any[], cartNumber: string) {
       });
       
     } catch (error) {
-      console.error(`âŒ Failed to upload PDF for cart item ${order.cartId}:`, error);
+      console.error(`[ERR] Failed to upload PDF for cart item ${order.cartId}:`, error);
     }
   }
   
@@ -95,7 +95,7 @@ async function uploadPDFsToBlob(ordersWithPDFs: any[], cartNumber: string) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const origin = req.headers.origin;
 
-  // âœ… ADD CORS HANDLING (same pattern as send-email.js)
+  // [OK] ADD CORS HANDLING (same pattern as send-email.js)
   let isOriginAllowed = false;
   if (origin) {
     if (allowedOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
@@ -112,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-  // âœ… Handle OPTIONS preflight request
+  // [OK] Handle OPTIONS preflight request
   if (req.method === 'OPTIONS') {
     if (!isOriginAllowed && origin) {
       console.warn(`CORS preflight denied for origin: ${origin}`);
@@ -122,7 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(204).end();
   }
 
-  // âœ… Only allow POST
+  // [OK] Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -133,7 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ============================================================================
     const requestType = req.body.type || 'cart'; // Default to 'cart' for backwards compatibility
     
-    console.log(`ðŸ“¬ Processing ${requestType} email request...`);
+    console.log(`[MAIL] Processing ${requestType} email request...`);
     
     // ============================================================================
     // INVOICE / QUOTE EMAIL FLOW (shared - these two document types only differ
@@ -375,11 +375,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(429).json({ error: 'Too many requests. Please try again later.' });
     }
 
-    console.log('Ã°Å¸â€œÂ§ Processing cart email request...');
-    console.log(`Ã°Å¸â€œÂ¦ Cart items: ${items.length}`);
-    console.log(`Ã°Å¸â€˜Â¤ Customer: ${userDetails.email}`);
-    console.log(`ðŸ“‹ Send copy to customer: ${sendCopyToCustomer}`);
-    console.log(`Ã°Å¸â€™Â¬ Message: ${message ? 'Yes' : 'No'}`);
+    console.log('[EMAIL] Processing cart email request...');
+    console.log(`[PKG] Cart items: ${items.length}`);
+    console.log(`[USER] Customer: ${userDetails.email}`);
+    console.log(`[LIST] Send copy to customer: ${sendCopyToCustomer}`);
+    console.log(`[MSG] Message: ${message ? 'Yes' : 'No'}`);
 
     // Generate cart number
     const cartNumber = `CART-${Date.now()}`;
@@ -387,7 +387,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Separate cart items by type
     const { pwaItems, websiteItems, trac360Items, function360Items } = separateCartItems(items);
 
-    console.log('Ã°Å¸â€œÅ  Cart Composition:');
+    console.log('[STATS] Cart Composition:');
     console.log(`   Website products: ${websiteItems.length}`);
     console.log(`   PWA orders: ${pwaItems.length}`);
     console.log(`   Trac 360 orders: ${trac360Items.length}`);
@@ -440,16 +440,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (allOrdersWithPDFs.length > 0) {
       if (isLocalMode) {
-        console.log(`ðŸ“Ž LOCAL MODE: Skipping Blob upload for ${allOrdersWithPDFs.length} PDF(s)`);
+        console.log(`[ATTACH] LOCAL MODE: Skipping Blob upload for ${allOrdersWithPDFs.length} PDF(s)`);
       } else {
-        console.log(`Ã°Å¸â€œÂ¤ Uploading ${allOrdersWithPDFs.length} PDF(s) to Vercel Blob...`);
+        console.log(`[SEND] Uploading ${allOrdersWithPDFs.length} PDF(s) to Vercel Blob...`);
         blobUrls = await uploadPDFsToBlob(allOrdersWithPDFs, cartNumber);
-        console.log(`âœ… Uploaded ${blobUrls.length} PDF(s) to Blob`);
+        console.log(`[OK] Uploaded ${blobUrls.length} PDF(s) to Blob`);
       }
     }
 
     // Generate email templates
-    console.log('Ã°Å¸â€œÂ§ Generating cart email templates...');
+    console.log('[EMAIL] Generating cart email templates...');
     const emailTemplates = generateCartEmailTemplates(
       cartNumber,
       userDetails,
@@ -462,7 +462,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       sendCopyToCustomer
     );
 
-    console.log('âœ… Email templates generated');
+    console.log('[OK] Email templates generated');
 
     // Prepare email data
     const sanitizedPwaOrders = isLocalMode 
@@ -493,7 +493,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Send via QStash or direct
     if (isLocalMode) {
-      console.log('Ã°Å¸â€œÂ§ LOCAL MODE: Calling send-email directly...');
+      console.log('[EMAIL] LOCAL MODE: Calling send-email directly...');
       
       try {
         const emailResponse = await fetch(callbackUrl, {
@@ -506,7 +506,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         
         if (emailResponse.ok) {
-          console.log('âœ… Cart email sent successfully (local mode)');
+          console.log('[OK] Cart email sent successfully (local mode)');
           
           return res.status(200).json({
             success: true,
@@ -516,21 +516,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
         } else {
           const errorText = await emailResponse.text();
-          console.error('âŒ Email sending failed:', errorText);
+          console.error('[ERR] Email sending failed:', errorText);
           throw new Error('Failed to send cart email');
         }
       } catch (emailError: any) {
-        console.error('âŒ Error calling email API:', emailError);
+        console.error('[ERR] Error calling email API:', emailError);
         throw emailError;
       }
       
     } else {
-      console.log('Ã°Å¸Å¡â‚¬ PRODUCTION MODE: Using QStash...');
+      console.log('[GO] PRODUCTION MODE: Using QStash...');
       
       const qstashResult = await pushToQStash(emailData, callbackUrl);
 
       if (qstashResult.success) {
-        console.log(`âœ… Cart email queued: ${cartNumber}`);
+        console.log(`[OK] Cart email queued: ${cartNumber}`);
         
         return res.status(200).json({
           success: true,
@@ -538,13 +538,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           emailsQueued: true
         });
       } else {
-        console.error(`âŒ Failed to queue cart email:`, qstashResult.error);
+        console.error(`[ERR] Failed to queue cart email:`, qstashResult.error);
         throw new Error('Failed to queue cart email');
       }
     }
 
   } catch (error: any) {
-    console.error('âŒ Cart email error:', error);
+    console.error('[ERR] Cart email error:', error);
     return res.status(500).json({ 
       error: 'Failed to send cart email',
       details: error.message 

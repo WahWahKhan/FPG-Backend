@@ -1,0 +1,80 @@
+[
+    {
+      "id": "valve-adaptors",
+      "name": "Valve with Adaptors",
+      "description": "Include Couplings & Adaptors",
+      "basePrice": 120,
+      "currency": "AUD",
+      "swellProductId": "valve-adaptors-addon",
+      "subOptions": null
+    },
+    {
+      "id": "tractor-hose-kit",
+      "name": "Tractor Hose Kit",
+      "description": "Tractor Hose Kit",
+      "basePrice": 240,
+      "currency": "AUD",
+      "swellProductId": "tractor-hose-kit-addon",
+      "subOptions": null
+    },
+    {
+      "id": "hose-protection",
+      "name": "Hose Protection",
+      "description": "Protect Hose Kit",
+      "basePrice": 80,
+      "currency": "AUD",
+      "swellProductId": "hose-protection-addon",
+      "subOptions": [
+        {
+          "id": "nylon-sleeve",
+          "name": "Nylon Sleeve",
+          "additionalPrice": 0,
+          "image": "/trac360/nylon-sleeve.png"
+        },
+        {
+          "id": "spiral-wrap",
+          "name": "Spiral Wrap",
+          "additionalPrice": 0,
+          "image": "/trac360/spiral-wrap.png"
+        }
+      ]
+    },
+    {
+      "id": "joystick-upgradation",
+      "name": "Joystick Upgradation",
+      "description": "Upgrade Your Joystick",
+      "basePrice": 110,
+      "currency": "AUD",
+      "swellProductId": "joystick-upgradation-addon",
+      "subOptions": [
+        {
+          "id": "one-button",
+          "name": "One Button",
+          "additionalPrice": 0,
+          "image": "/trac360/one-button.png"
+        },
+        {
+          "id": "two-button",
+          "name": "Two Button",
+          "additionalPrice": 0,
+          "image": "/trac360/two-button.png"
+        }
+      ]
+    },
+    {
+      "id": "mounting-brackets",
+      "name": "Mounting Brackets",
+      "description": "Valve & Joystick Brackets",
+      "basePrice": 120,
+      "currency": "AUD",
+      "swellProductId": "mounting-brackets-addon",
+      "subOptions": [
+        {
+          "id": "valve-joystick-bracket",
+          "name": "Valve & Joystick Brackets",
+          "additionalPrice": 0,
+          "image": "/trac360/mounting-bracket.png"
+        }
+      ]
+    }
+  ]

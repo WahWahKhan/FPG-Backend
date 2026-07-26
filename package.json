@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "parity": "node scripts/pricing-parity.test.js",
     "nm": "new-component  -x tsx -d components/modules",
     "nv": "new-component  -x tsx -d components/views"
   },
