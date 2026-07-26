@@ -40,8 +40,19 @@ export default async function handler(req, res) {
 
     try {
         const saved = await quoteStore.getSavedCart(token);
-        if (!saved || !Array.isArray(saved.items)) {
+        if (!saved) {
             // Expired or never existed — 410 lets the UI show a friendly message.
+            return res.status(410).json({ error: 'This saved cart has expired or is no longer available.' });
+        }
+        if (saved.purchased) {
+            // Single-use: this cart was already ordered. 409 + flag so the UI can
+            // say "already ordered" rather than a generic "expired" message.
+            return res.status(409).json({
+                error: 'This saved cart has already been ordered and can no longer be checked out.',
+                alreadyOrdered: true,
+            });
+        }
+        if (!Array.isArray(saved.items)) {
             return res.status(410).json({ error: 'This saved cart has expired or is no longer available.' });
         }
         return res.status(200).json({

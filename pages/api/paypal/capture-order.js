@@ -676,6 +676,18 @@ export default async function handler(req, res) {
             } catch (e) {
                 console.error('⚠️ Failed to persist Redis idempotency marker:', e.message);
             }
+            // Single-use "save cart for later" link: now that this cart has been
+            // paid, invalidate its saved-cart token so the 30-day email link can
+            // no longer be used to check out — and re-charge — the same cart.
+            // Best-effort: never fail a completed order over this cleanup.
+            if (serverQuote && serverQuote.savedCartToken) {
+                try {
+                    await quoteStore.markSavedCartPurchased(serverQuote.savedCartToken, orderNumber);
+                    console.log(`🔒 Saved-cart link consumed after purchase (…${String(serverQuote.savedCartToken).slice(-6)})`);
+                } catch (e) {
+                    console.error('⚠️ Failed to invalidate saved-cart link:', e.message);
+                }
+            }
         }
 
         // ============================================================================

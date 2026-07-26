@@ -219,6 +219,10 @@ export default async function handler(req, res) {
             },
             shippingAddress: shipping || null,
             internalOrderNumber: orderNumber || null,
+            // Carried so capture-order can single-use-invalidate the saved-cart
+            // link once this order is successfully paid (prevents re-paying the
+            // same cart via the 30-day email link).
+            savedCartToken: savedCartToken || null,
             createdAt: new Date().toISOString(),
         });
 
