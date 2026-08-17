@@ -17,7 +17,7 @@ const HeaderProducts = ({
         (prev: SubCategory[], curr) => prev.concat(curr.subCategories),
         []
       ),
-    []
+    [categories]
   );
 
   return (

@@ -175,7 +175,7 @@ const Search = () => {
     }
     
     setFilteredData(newFilteredData)
-  }, [categories]);
+  }, [categories, data]);
 
   const variants = {
     initial: { opacity: 0, x: -100 },

@@ -8,12 +8,10 @@ import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 type Props = {};
 
 const ProductsHeroHome = (props: Props) => {
-  /*const images = useMemo(
+  const images = useMemo(
     () => ["/frontA.png", "/frontB.png", "/frontC.png", "/frontD.png"],
     []
   );
-*/
-  const images = ["/frontA.png", "/frontB.png", "/frontC.png", "/frontD.png"];
 
   const [selectedImage, setSelectedImage] = useState(images[0]);
 
