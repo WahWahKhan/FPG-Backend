@@ -3,6 +3,7 @@
 // This enables frontend to poll for order completion
 
 import fetch from 'node-fetch';
+import * as quoteStore from '../../../lib/quote-store';
 
 // Simple in-memory order status tracking
 // 🔧 NOTE: In production, replace this with a database (MongoDB, PostgreSQL, etc.)
@@ -17,6 +18,13 @@ export function setOrderStatus(orderNumber, status, data = {}) {
         lastUpdated: new Date().toISOString()
     });
     console.log(`📊 Order ${orderNumber} status set to: ${status}`);
+    // Write-through to Redis (fire-and-forget) so status survives serverless
+    // instance boundaries for the frontend's timeout polling.
+    if (quoteStore.isConfigured()) {
+        quoteStore.setOrderStatus(orderNumber, status, { data }).catch((e) =>
+            console.error('order-status: Redis write-through failed:', e.message)
+        );
+    }
 }
 
 // Helper to get order status
@@ -33,6 +41,11 @@ export function updateOrderStatus(orderNumber, updates) {
             ...updates,
             lastUpdated: new Date().toISOString()
         });
+    }
+    if (quoteStore.isConfigured()) {
+        quoteStore.updateOrderStatus(orderNumber, updates).catch((e) =>
+            console.error('order-status: Redis update-through failed:', e.message)
+        );
     }
 }
 
@@ -104,8 +117,26 @@ export default async function handler(req, res) {
 
         console.log(`📊 Status check for order: ${orderNumber}`);
 
-        // Get order status from memory
-        const orderStatus = getOrderStatus(orderNumber);
+        // Prefer Redis (survives serverless instances), fall back to memory.
+        let orderStatus = null;
+        if (quoteStore.isConfigured()) {
+            try {
+                const redisStatus = await quoteStore.getOrderStatus(orderNumber);
+                if (redisStatus) {
+                    orderStatus = {
+                        status: redisStatus.status,
+                        data: redisStatus.data || {},
+                        timestamp: redisStatus.updatedAt,
+                        lastUpdated: redisStatus.updatedAt,
+                    };
+                }
+            } catch (e) {
+                console.error('order-status: Redis read failed, using memory:', e.message);
+            }
+        }
+        if (!orderStatus) {
+            orderStatus = getOrderStatus(orderNumber);
+        }
 
         if (!orderStatus) {
             console.log(`❓ Order ${orderNumber} not found in status tracking`);
