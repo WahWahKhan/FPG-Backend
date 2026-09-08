@@ -45,12 +45,20 @@ export default async function handler(req, res) {
     try {
         const pricing = await priceCart(items);
         return res.status(200).json({
+            // Shape must match create-order.js's breakdown exactly — the frontend
+            // types both as ServerBreakdown and picks between them at display time.
+            // `currency` is declared required there; omitting it went uncaught only
+            // because res.json() is typed `any`. `lines` is narrowed to the same four
+            // fields create-order returns: the raw pricing lines carry internals
+            // (isSteelTubes, swellProductIds) that have no business on an endpoint
+            // that fires on every cart change.
             breakdown: {
+                currency: pricing.currency,
                 subtotal: pricing.subtotal,
                 shipping: pricing.shipping,
                 gst: pricing.gst,
                 total: pricing.total,
-                lines: pricing.lines,
+                lines: pricing.lines.map((l) => ({ cartId: l.cartId, kind: l.kind, amount: l.amount, name: l.name })),
             },
         });
     } catch (err) {
