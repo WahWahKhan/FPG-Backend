@@ -93,6 +93,25 @@ function rebuildOrdersFromQuote(quote, attachments) {
             };
         });
 
+    const tube360Orders = lines
+        .filter((l) => l.kind === 'tube360')
+        .map((l) => {
+            const a = att(l.cartId);
+            return {
+                id: 'tube360',
+                type: 'tube360_order',
+                name: a.name || 'TUBE360 Custom Tube',
+                totalPrice: l.amount,
+                quantity: 1,
+                image: a.image || '',
+                pdfDataUrl: a.pdfDataUrl,
+                // Server price breakdown: { spec, labels, bending, ... } - used by the emails.
+                configuration: l.breakdown || {},
+                cartId: l.cartId,
+                tube360OrderNumber: `TUBE-${l.cartId}`,
+            };
+        });
+
     const totals = {
         subtotal: pricing.subtotal || 0,
         shipping: pricing.shipping || 0,
@@ -100,7 +119,7 @@ function rebuildOrdersFromQuote(quote, attachments) {
         total: pricing.total || 0,
     };
 
-    return { websiteProducts, pwaOrders, trac360Orders, function360Orders, totals };
+    return { websiteProducts, pwaOrders, trac360Orders, function360Orders, tube360Orders, totals };
 }
 
 // ========================================
@@ -160,9 +179,10 @@ async function uploadPDFsToBlob(ordersWithPDFs, orderNumber) {
             const buffer = Buffer.from(base64Data, 'base64');
             
             // Determine filename based on order type
-            const orderType = order.type === 'trac360_order' ? 'tractor' : 
-                  order.type === 'pwa_order' ? 'assembly' : 
-                  order.type === 'function360_order' ? 'function' : 'unknown';
+            const orderType = order.type === 'trac360_order' ? 'tractor' :
+                  order.type === 'pwa_order' ? 'assembly' :
+                  order.type === 'function360_order' ? 'function' :
+                  order.type === 'tube360_order' ? 'tube' : 'unknown';
             const filename = `orders/${orderNumber}/${orderType}-${order.cartId || i}.pdf`;
 
             // Add debug logging:
@@ -184,6 +204,8 @@ async function uploadPDFsToBlob(ordersWithPDFs, orderNumber) {
                 ? `HOSE360-${order.cartId || 'order'}.pdf`
                 : order.type === 'function360_order'
                 ? `FUNCTION360-${order.cartId || 'order'}.pdf`
+                : order.type === 'tube360_order'
+                ? `TUBE360-${order.cartId || 'order'}.pdf`
                 : `Order-${order.cartId || 'order'}.pdf`;
 
             console.log(`✅ PDF uploaded - Type: ${order.type}, Name: ${pdfName}`);
@@ -373,6 +395,7 @@ export default async function handler(req, res) {
         pwaOrders = [],
         trac360Orders = [],
         function360Orders = [],
+        tube360Orders = [],
         totals
     } = req.body;
     const {
@@ -404,6 +427,7 @@ export default async function handler(req, res) {
         nonEmpty(req.body.pwaOrders) ||
         nonEmpty(req.body.trac360Orders) ||
         nonEmpty(req.body.function360Orders) ||
+        nonEmpty(req.body.tube360Orders) ||
         (req.body.totals !== undefined && req.body.totals !== null);
 
     // ============================================================================
@@ -451,6 +475,7 @@ export default async function handler(req, res) {
         pwaOrders = rebuilt.pwaOrders;
         trac360Orders = rebuilt.trac360Orders;
         function360Orders = rebuilt.function360Orders;
+        tube360Orders = rebuilt.tube360Orders;
         totals = rebuilt.totals; // server-authoritative breakdown
     } else if (clientPricedPayload) {
         // ========================================================================
@@ -489,6 +514,7 @@ export default async function handler(req, res) {
     console.log(`   PWA orders: ${pwaOrders.length}`);
     console.log(`   Trac 360 orders: ${trac360Orders.length}`);
     console.log(`   Function 360 orders: ${function360Orders.length}`)
+    console.log(`   Tube 360 orders: ${tube360Orders.length}`)
 
     try {
         // ============================================================================
@@ -752,9 +778,11 @@ export default async function handler(req, res) {
             });
             }
         }
-        
-        updateOrderStatus(orderNumber, { 
-            inventoryUpdated: inventoryResult.success 
+
+        // TUBE360: intentionally no inventory update - Tube360 does not decrement Swell stock.
+
+        updateOrderStatus(orderNumber, {
+            inventoryUpdated: inventoryResult.success
         });
 
         // ============================================================================
@@ -825,6 +853,14 @@ export default async function handler(req, res) {
                     unitPrice: item.totalPrice,
                     subtotal: item.totalPrice,
                 })),
+                // TUBE360 orders
+                ...tube360Orders.map(item => ({
+                    id: item.id || 'tube360',
+                    name: item.name || 'TUBE360 Custom Tube',
+                    quantity: 1,
+                    unitPrice: item.totalPrice,
+                    subtotal: item.totalPrice,
+                })),
             ];
 
             const invoiceData = {
@@ -891,7 +927,8 @@ export default async function handler(req, res) {
         const allOrdersWithPDFs = [
             ...pwaOrders,
             ...trac360Orders,
-            ...function360Orders
+            ...function360Orders,
+            ...tube360Orders
         ].filter(order => order.pdfDataUrl);
 
         console.log('🔍 Orders before Blob upload:', allOrdersWithPDFs.map(o => ({
@@ -933,7 +970,8 @@ export default async function handler(req, res) {
             function360Orders,
             totals,
             captureId,
-            TESTING_MODE
+            TESTING_MODE,
+            tube360Orders
         );
         
         console.log('✅ Email templates generated:', {
@@ -951,9 +989,13 @@ export default async function handler(req, res) {
             ? trac360Orders  // Keep PDFs in local mode
             : trac360Orders.map(({ pdfDataUrl, ...rest }) => rest);  // Strip in production
 
-        const sanitizedFunction360Orders = isLocalMode 
+        const sanitizedFunction360Orders = isLocalMode
             ? function360Orders  // Keep PDFs in local mode
             : function360Orders.map(({ pdfDataUrl, ...rest }) => rest);  // Strip in production
+
+        const sanitizedTube360Orders = isLocalMode
+            ? tube360Orders  // Keep PDFs in local mode
+            : tube360Orders.map(({ pdfDataUrl, ...rest }) => rest);  // Strip in production
 
         console.log(`📎 PDF sanitization - Local mode: ${isLocalMode}, PDFs ${isLocalMode ? 'KEPT' : 'STRIPPED'}`);
         
@@ -966,6 +1008,7 @@ export default async function handler(req, res) {
             pwaOrders: sanitizedPwaOrders,
             trac360Orders: sanitizedTrac360Orders,
             function360Orders: sanitizedFunction360Orders,
+            tube360Orders: sanitizedTube360Orders,
             blobUrls,
             totals,
             testingMode: TESTING_MODE,

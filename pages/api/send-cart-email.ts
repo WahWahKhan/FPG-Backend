@@ -54,9 +54,10 @@ async function uploadPDFsToBlob(ordersWithPDFs: any[], cartNumber: string) {
       const base64Data = order.pdfDataUrl.split(',')[1];
       const buffer = Buffer.from(base64Data, 'base64');
       
-      const orderType = order.type === 'trac360_order' ? 'tractor' : 
-                        order.type === 'pwa_order' ? 'assembly' : 
-                        order.type === 'function360_order' ? 'function' : 'unknown';
+      const orderType = order.type === 'trac360_order' ? 'tractor' :
+                        order.type === 'pwa_order' ? 'assembly' :
+                        order.type === 'function360_order' ? 'function' :
+                        order.type === 'tube360_order' ? 'tube' : 'unknown';
       const filename = `cart-requests/${cartNumber}/${orderType}-${order.cartId || i}.pdf`;
       
       console.log(`[SEND] Uploading PDF to Blob: ${filename} (${(buffer.length / 1024).toFixed(2)}KB)`);
@@ -75,6 +76,8 @@ async function uploadPDFsToBlob(ordersWithPDFs: any[], cartNumber: string) {
         ? `HOSE360-${order.cartId || 'order'}.pdf`
         : order.type === 'function360_order'
         ? `FUNCTION360-${order.cartId || 'order'}.pdf`
+        : order.type === 'tube360_order'
+        ? `TUBE360-${order.cartId || 'order'}.pdf`
         : `Cart-${order.cartId || 'order'}.pdf`;
       
       blobUrls.push({
@@ -385,17 +388,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const cartNumber = `CART-${Date.now()}`;
 
     // Separate cart items by type
-    const { pwaItems, websiteItems, trac360Items, function360Items } = separateCartItems(items);
+    const { pwaItems, websiteItems, trac360Items, function360Items, tube360Items } = separateCartItems(items);
 
     console.log('[STATS] Cart Composition:');
     console.log(`   Website products: ${websiteItems.length}`);
     console.log(`   PWA orders: ${pwaItems.length}`);
     console.log(`   Trac 360 orders: ${trac360Items.length}`);
     console.log(`   Function 360 orders: ${function360Items.length}`);
+    console.log(`   Tube 360 orders: ${tube360Items.length}`);
 
     // Calculate totals
     const subtotal = items.reduce((sum, item) => {
-      if (item.type === 'pwa_order' || item.type === 'trac360_order' || item.type === 'function360_order') {
+      if (item.type === 'pwa_order' || item.type === 'trac360_order' || item.type === 'function360_order' || item.type === 'tube360_order') {
         return sum + (item.totalPrice || 0);
       }
       return sum + ((item.price || 0) * item.quantity);
@@ -413,7 +417,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const allOrdersWithPDFs = [
       ...pwaItems,
       ...trac360Items,
-      ...function360Items
+      ...function360Items,
+      ...tube360Items
     ].filter(order => order.pdfDataUrl);
 
     // Determine callback URL
@@ -459,7 +464,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       function360Items,
       totals,
       message || '',
-      sendCopyToCustomer
+      sendCopyToCustomer,
+      tube360Items
     );
 
     console.log('[OK] Email templates generated');
@@ -473,9 +479,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? trac360Items 
       : trac360Items.map(({ pdfDataUrl, ...rest }) => rest);
 
-    const sanitizedFunction360Orders = isLocalMode 
-      ? function360Items 
+    const sanitizedFunction360Orders = isLocalMode
+      ? function360Items
       : function360Items.map(({ pdfDataUrl, ...rest }) => rest);
+
+    const sanitizedTube360Orders = isLocalMode
+      ? tube360Items
+      : tube360Items.map(({ pdfDataUrl, ...rest }) => rest);
 
     const emailData = {
       orderNumber: cartNumber,
@@ -484,6 +494,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       pwaOrders: sanitizedPwaOrders,
       trac360Orders: sanitizedTrac360Orders,
       function360Orders: sanitizedFunction360Orders,
+      tube360Orders: sanitizedTube360Orders,
       blobUrls,
       totals,
       testingMode: process.env.TESTING_MODE === 'true',

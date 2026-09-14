@@ -224,7 +224,8 @@ export default async function handler(req, res) {
                 pdfAttachments,
                 pwaOrders,
                 trac360Orders,
-                function360Orders, 
+                function360Orders,
+                tube360Orders,
                 blobUrls,
                 emailTemplates,
                 userEmail,
@@ -334,6 +335,17 @@ export default async function handler(req, res) {
                       }));
                     actualPdfAttachments.push(...function360Pdfs);
                     console.log(`🔎 Extracted ${function360Pdfs.length} Function360 PDF(s)`);
+                }
+
+                if (tube360Orders && tube360Orders.length > 0) {
+                    const tube360Pdfs = tube360Orders
+                      .filter(order => order.pdfDataUrl)
+                      .map(order => ({
+                        name: `TUBE360-${order.cartId || Date.now()}.pdf`,
+                        contentBytes: order.pdfDataUrl.split(',')[1]
+                      }));
+                    actualPdfAttachments.push(...tube360Pdfs);
+                    console.log(`🔎 Extracted ${tube360Pdfs.length} Tube360 PDF(s)`);
                 }
             }
 

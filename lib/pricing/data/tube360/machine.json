@@ -1,0 +1,10 @@
+{
+  "_note": "Universal CNC bender limits (RESEARCHED DEFAULTS - owner to confirm). Apply to every tube size.",
+  "minBendAngleDeg": 1,
+  "maxBendAngleDeg": 180,
+  "minTotalLengthMm": 100,
+  "maxTotalLengthMm": 6000,
+  "maxBends": 10,
+  "maxQuantity": 100,
+  "maxNotesLength": 1000
+}

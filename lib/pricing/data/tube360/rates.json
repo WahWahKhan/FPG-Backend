@@ -1,0 +1,57 @@
+{
+  "_note": "PLACEHOLDER RATES - the owner MUST confirm every number before go-live. AUD, ex-GST. Tube material is NOT here: it is the live Swell price per metre of the selected tube.",
+  "currency": "AUD",
+  "materialAllowanceMm": 0,
+  "sizeBands": [
+    {
+      "id": "small",
+      "maxOdMm": 12.7
+    },
+    {
+      "id": "medium",
+      "maxOdMm": 19.05
+    },
+    {
+      "id": "large",
+      "maxOdMm": 28
+    }
+  ],
+  "bendRatePerBend": {
+    "small": 6,
+    "medium": 8,
+    "large": 10
+  },
+  "bendComplexityTiers": [
+    {
+      "minBends": 0,
+      "multiplier": 1
+    },
+    {
+      "minBends": 4,
+      "multiplier": 1.1
+    },
+    {
+      "minBends": 7,
+      "multiplier": 1.25
+    }
+  ],
+  "endRatePerEnd": {
+    "none": {
+      "small": 0,
+      "medium": 0,
+      "large": 0
+    },
+    "flare": {
+      "small": 8,
+      "medium": 10,
+      "large": 12
+    },
+    "ring": {
+      "small": 12,
+      "medium": 15,
+      "large": 20
+    }
+  },
+  "setupFeePerLine": 25,
+  "oversizeFreightThresholdMm": 1000
+}

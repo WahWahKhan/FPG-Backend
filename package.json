@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "parity": "node scripts/pricing-parity.test.js",
+    "test:tube360": "node scripts/tube360-pricing.test.js",
     "nm": "new-component  -x tsx -d components/modules",
     "nv": "new-component  -x tsx -d components/views"
   },

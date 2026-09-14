@@ -6,7 +6,7 @@ export interface ICart {
 /**
  * Cart item type identifier
  */
-export type CartItemType = 'pwa_order' | 'trac360_order' | 'function360_order' | 'website_product';
+export type CartItemType = 'pwa_order' | 'trac360_order' | 'function360_order' | 'website_product' | 'tube360_order';
 
 /**
  * Trac 360 Configuration Interface

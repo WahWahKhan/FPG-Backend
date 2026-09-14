@@ -18,7 +18,7 @@ export const isTrac360Order = (item: IItemCart): boolean => {
  * Check if an item is a custom order (PWA or Trac 360)
  */
 export const isCustomOrder = (item: IItemCart): boolean => {
-  return isPWAOrder(item) || isTrac360Order(item) || item.type === 'function360_order';
+  return isPWAOrder(item) || isTrac360Order(item) || item.type === 'function360_order' || item.type === 'tube360_order';
 };
 
 /**
@@ -81,6 +81,7 @@ export const separateCartItems = (items: IItemCart[]) => {
   const websiteItems: IItemCart[] = [];
   const trac360Items: IItemCart[] = [];
   const function360Items: IItemCart[] = [];  // ← ADD THIS
+  const tube360Items: IItemCart[] = [];
 
   items.forEach((item) => {
     if (item.type === 'pwa_order') {
@@ -89,12 +90,14 @@ export const separateCartItems = (items: IItemCart[]) => {
       trac360Items.push(item);
     } else if (item.type === 'function360_order') {  // ← ADD THIS
       function360Items.push(item);
+    } else if (item.type === 'tube360_order') {
+      tube360Items.push(item);
     } else {
       websiteItems.push(item);
     }
   });
 
-  return { pwaItems, websiteItems, trac360Items, function360Items };  // ← ADD THIS
+  return { pwaItems, websiteItems, trac360Items, function360Items, tube360Items };  // ← ADD THIS
 };
 
 /**
@@ -103,7 +106,7 @@ export const separateCartItems = (items: IItemCart[]) => {
  */
 export const calculateCartTotals = (items: IItemCart[]) => {
   const normalizedItems = items.map(normalizeCartItem);
-  const { websiteItems, pwaItems, trac360Items, function360Items } = separateCartItems(normalizedItems);
+  const { websiteItems, pwaItems, trac360Items, function360Items, tube360Items } = separateCartItems(normalizedItems);
   
   // Calculate totals for each type
   const websiteTotal = websiteItems.reduce((sum, item) => 
@@ -118,20 +121,25 @@ export const calculateCartTotals = (items: IItemCart[]) => {
     sum + getItemPrice(item), 0
   );
   
-  const function360Total = function360Items.reduce((sum, item) => 
+  const function360Total = function360Items.reduce((sum, item) =>
     sum + getItemPrice(item), 0
   );
-  
-  const subtotal = websiteTotal + pwaTotal + trac360Total + function360Total;
+
+  const tube360Total = tube360Items.reduce((sum, item) =>
+    sum + getItemPrice(item), 0
+  );
+
+  const subtotal = websiteTotal + pwaTotal + trac360Total + function360Total + tube360Total;
   const shipping = 12.85;
   const gst = (subtotal + shipping) * 0.10;
   const total = subtotal + shipping + gst;
-  
+
   return {
     websiteTotal,
     pwaTotal,
     trac360Total,
     function360Total,
+    tube360Total,
     subtotal,
     shipping,
     gst,
@@ -142,7 +150,8 @@ export const calculateCartTotals = (items: IItemCart[]) => {
       websiteItems: websiteItems.length,
       pwaItems: pwaItems.length,
       trac360Items: trac360Items.length,
-      function360Items: function360Items.length
+      function360Items: function360Items.length,
+      tube360Items: tube360Items.length
     }
   };
 };

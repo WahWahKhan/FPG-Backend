@@ -1,0 +1,438 @@
+{
+  "_note": "Tube360 catalogue. One row per Swell Steel Tubes product (verified against Swell 2026-09-12). Material price per metre is read LIVE from Swell via swellProductId. minClrMm = ceil(2 x OD) (FPG Services page: bend radius as tight as 2x OD). maxClrMm = round(5 x OD) (typical rotary-draw die range). minSectionMm = max(50, ceil(3 x OD)). All three are RESEARCHED DEFAULTS - owner to confirm per size. Flare is not offered on 1/4 inch (FPG flaring range is 3/8 inch to 1 inch / 10 to 28 mm).",
+  "version": 1,
+  "materials": [
+    {
+      "id": "carbon",
+      "label": "Carbon Steel (EN10305-4 E235)"
+    },
+    {
+      "id": "stainless",
+      "label": "Stainless Steel 304L (ASTM A213 TP304L)"
+    }
+  ],
+  "sizeSystems": [
+    {
+      "id": "imperial",
+      "label": "Imperial (inch)"
+    },
+    {
+      "id": "metric",
+      "label": "Metric (mm)"
+    }
+  ],
+  "endTypes": [
+    {
+      "id": "none",
+      "label": "None",
+      "description": "Plain square-cut end"
+    },
+    {
+      "id": "flare",
+      "label": "Flare",
+      "description": "JIC 37° flare"
+    },
+    {
+      "id": "ring",
+      "label": "Ring Assembly",
+      "description": "Cutting ring and nut pre-set on the tube"
+    }
+  ],
+  "tubes": [
+    {
+      "id": "FPG-CSTM-10-15",
+      "material": "carbon",
+      "sizeSystem": "metric",
+      "odLabel": "10 mm",
+      "odMm": 10,
+      "wallMm": 1.5,
+      "grade": "EN10305-4 E235",
+      "swellProductId": "6379cecdc9be010017a1e377",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 20,
+      "maxClrMm": 50,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-CSTM-12-15",
+      "material": "carbon",
+      "sizeSystem": "metric",
+      "odLabel": "12 mm",
+      "odMm": 12,
+      "wallMm": 1.5,
+      "grade": "EN10305-4 E235",
+      "swellProductId": "6379ceeab93a6a0012f10173",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 24,
+      "maxClrMm": 60,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-CSTM-15-20",
+      "material": "carbon",
+      "sizeSystem": "metric",
+      "odLabel": "15 mm",
+      "odMm": 15,
+      "wallMm": 2,
+      "grade": "EN10305-4 E235",
+      "swellProductId": "6379cefbb93a6a0012f10175",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 30,
+      "maxClrMm": 75,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-CSTM-18-20",
+      "material": "carbon",
+      "sizeSystem": "metric",
+      "odLabel": "18 mm",
+      "odMm": 18,
+      "wallMm": 2,
+      "grade": "EN10305-4 E235",
+      "swellProductId": "6379cf0d28749a0012b887f7",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 36,
+      "maxClrMm": 90,
+      "minSectionMm": 54
+    },
+    {
+      "id": "FPG-CSTM-22-30",
+      "material": "carbon",
+      "sizeSystem": "metric",
+      "odLabel": "22 mm",
+      "odMm": 22,
+      "wallMm": 3,
+      "grade": "EN10305-4 E235",
+      "swellProductId": "6379cf1eef180f00139601b1",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 44,
+      "maxClrMm": 110,
+      "minSectionMm": 66
+    },
+    {
+      "id": "FPG-CSTI-38122",
+      "material": "carbon",
+      "sizeSystem": "imperial",
+      "odLabel": "3/8\"",
+      "odMm": 9.53,
+      "wallMm": 1.22,
+      "grade": "EN10305-4 E235",
+      "swellProductId": "68abbc509487080012ae61c1",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 20,
+      "maxClrMm": 48,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-CSTI-121220",
+      "material": "carbon",
+      "sizeSystem": "imperial",
+      "odLabel": "1/2\"",
+      "odMm": 12.7,
+      "wallMm": 1.22,
+      "grade": "EN10305-4 E235",
+      "swellProductId": "68abbcd26448670012a834d1",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 26,
+      "maxClrMm": 64,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-CSTI-582000",
+      "material": "carbon",
+      "sizeSystem": "imperial",
+      "odLabel": "5/8\"",
+      "odMm": 15.88,
+      "wallMm": 2,
+      "grade": "EN10305-4 E235",
+      "swellProductId": "68abbd5d4e0b4d0012d150ba",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 32,
+      "maxClrMm": 79,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-CSTI-3420000",
+      "material": "carbon",
+      "sizeSystem": "imperial",
+      "odLabel": "3/4\"",
+      "odMm": 19.05,
+      "wallMm": 2,
+      "grade": "EN10305-4 E235",
+      "swellProductId": "68abbdb1b5e0a50012603eac",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 39,
+      "maxClrMm": 95,
+      "minSectionMm": 58
+    },
+    {
+      "id": "FPG-CSTI-25430000",
+      "material": "carbon",
+      "sizeSystem": "imperial",
+      "odLabel": "1\"",
+      "odMm": 25.4,
+      "wallMm": 3,
+      "grade": "EN10305-4 E235",
+      "swellProductId": "68abbdfe4fd6d80012e0d5b7",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 51,
+      "maxClrMm": 127,
+      "minSectionMm": 77
+    },
+    {
+      "id": "FPG-SSTM-10-15",
+      "material": "stainless",
+      "sizeSystem": "metric",
+      "odLabel": "10 mm",
+      "odMm": 10,
+      "wallMm": 1.5,
+      "grade": "ASTM A213 TP304L",
+      "swellProductId": "6379d29e00762a0013af0b61",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 20,
+      "maxClrMm": 50,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-SSTM-12-15",
+      "material": "stainless",
+      "sizeSystem": "metric",
+      "odLabel": "12 mm",
+      "odMm": 12,
+      "wallMm": 1.5,
+      "grade": "ASTM A213 TP304L",
+      "swellProductId": "6379d2afa5fd7a00120a63e0",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 24,
+      "maxClrMm": 60,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-SSTM-15-20",
+      "material": "stainless",
+      "sizeSystem": "metric",
+      "odLabel": "15 mm",
+      "odMm": 15,
+      "wallMm": 2,
+      "grade": "ASTM A213 TP304L",
+      "swellProductId": "6379d2c1b93a6a0012f1019c",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 30,
+      "maxClrMm": 75,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-SSTM-18-20",
+      "material": "stainless",
+      "sizeSystem": "metric",
+      "odLabel": "18 mm",
+      "odMm": 18,
+      "wallMm": 2,
+      "grade": "ASTM A213 TP304L",
+      "swellProductId": "6379d304a5fd7a00120a63e4",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 36,
+      "maxClrMm": 90,
+      "minSectionMm": 54
+    },
+    {
+      "id": "FPG-SSTM-22-30",
+      "material": "stainless",
+      "sizeSystem": "metric",
+      "odLabel": "22 mm",
+      "odMm": 22,
+      "wallMm": 3,
+      "grade": "ASTM A213 TP304L",
+      "swellProductId": "6379d31428749a0012b8882f",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 44,
+      "maxClrMm": 110,
+      "minSectionMm": 66
+    },
+    {
+      "id": "FPG-SSTM-28-30",
+      "material": "stainless",
+      "sizeSystem": "metric",
+      "odLabel": "28 mm",
+      "odMm": 28,
+      "wallMm": 3,
+      "grade": "ASTM A213 TP304L",
+      "swellProductId": "6379d325b93a6a0012f101a1",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 56,
+      "maxClrMm": 140,
+      "minSectionMm": 84
+    },
+    {
+      "id": "FPG-SSTI-1415",
+      "material": "stainless",
+      "sizeSystem": "imperial",
+      "odLabel": "1/4\"",
+      "odMm": 6.35,
+      "wallMm": 1.5,
+      "grade": "ASTM A213 TP304L",
+      "swellProductId": "69069e27e8680e001256e207",
+      "allowedEnds": [
+        "none",
+        "ring"
+      ],
+      "minClrMm": 13,
+      "maxClrMm": 32,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-SSTI-3815",
+      "material": "stainless",
+      "sizeSystem": "imperial",
+      "odLabel": "3/8\"",
+      "odMm": 9.53,
+      "wallMm": 1.5,
+      "grade": "ASTM A213 TP304L",
+      "swellProductId": "6379d1fe28749a0012b8881c",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 20,
+      "maxClrMm": 48,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-SSTI-12150",
+      "material": "stainless",
+      "sizeSystem": "imperial",
+      "odLabel": "1/2\"",
+      "odMm": 12.7,
+      "wallMm": 1.5,
+      "grade": "ASTM A213 TP304L",
+      "swellProductId": "6379d21ac9be010017a1e384",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 26,
+      "maxClrMm": 64,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-SSTI-58200",
+      "material": "stainless",
+      "sizeSystem": "imperial",
+      "odLabel": "5/8\"",
+      "odMm": 15.88,
+      "wallMm": 2,
+      "grade": "ASTM A213 TP304L",
+      "swellProductId": "6379d235c9be010017a1e386",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 32,
+      "maxClrMm": 79,
+      "minSectionMm": 50
+    },
+    {
+      "id": "FPG-SSTI-342000",
+      "material": "stainless",
+      "sizeSystem": "imperial",
+      "odLabel": "3/4\"",
+      "odMm": 19.05,
+      "wallMm": 2,
+      "grade": "ASTM A213 TP304L",
+      "swellProductId": "6379d24bef180f00139601c4",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 39,
+      "maxClrMm": 95,
+      "minSectionMm": 58
+    },
+    {
+      "id": "FPG-SSTI-1300000",
+      "material": "stainless",
+      "sizeSystem": "imperial",
+      "odLabel": "1\"",
+      "odMm": 25.4,
+      "wallMm": 3,
+      "grade": "ASTM A213 TP304L",
+      "swellProductId": "6868ec9191e10c00123e3357",
+      "allowedEnds": [
+        "none",
+        "flare",
+        "ring"
+      ],
+      "minClrMm": 51,
+      "maxClrMm": 127,
+      "minSectionMm": 77
+    }
+  ]
+}

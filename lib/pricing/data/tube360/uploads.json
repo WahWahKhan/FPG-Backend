@@ -1,0 +1,100 @@
+{
+  "_note": "Tube360 customer file uploads -> the business SharePoint site (Microsoft Graph, app permission Sites.Selected). Browser sends 4 MB chunks to OUR backend (/api/tube360/upload-chunk), which forwards them to a Graph upload session. contentType is not needed by SharePoint; extensions are whitelisted here.",
+  "rootFolderLive": "Tube360 Quotes",
+  "rootFolderTest": "Tube360 Quotes - TEST",
+  "incomingFolder": "_incoming",
+  "maxFiles": 5,
+  "maxFileSizeBytes": 26214400,
+  "chunkSizeBytes": 4259840,
+  "uploadSessionTtlHours": 24,
+  "incomingRetentionHours": 48,
+  "groups": [
+    {
+      "id": "3d",
+      "label": "3D CAD models",
+      "hint": "STEP is preferred - our CNC bender imports STEP directly."
+    },
+    {
+      "id": "2d",
+      "label": "2D drawings"
+    },
+    {
+      "id": "data",
+      "label": "Bend data tables (XYZ or LRA coordinates)"
+    },
+    {
+      "id": "image",
+      "label": "Photos or hand sketches"
+    }
+  ],
+  "fileTypes": [
+    {
+      "ext": "step",
+      "group": "3d"
+    },
+    {
+      "ext": "stp",
+      "group": "3d"
+    },
+    {
+      "ext": "iges",
+      "group": "3d"
+    },
+    {
+      "ext": "igs",
+      "group": "3d"
+    },
+    {
+      "ext": "stl",
+      "group": "3d"
+    },
+    {
+      "ext": "x_t",
+      "group": "3d"
+    },
+    {
+      "ext": "x_b",
+      "group": "3d"
+    },
+    {
+      "ext": "pdf",
+      "group": "2d"
+    },
+    {
+      "ext": "dxf",
+      "group": "2d"
+    },
+    {
+      "ext": "dwg",
+      "group": "2d"
+    },
+    {
+      "ext": "csv",
+      "group": "data"
+    },
+    {
+      "ext": "txt",
+      "group": "data"
+    },
+    {
+      "ext": "xlsx",
+      "group": "data"
+    },
+    {
+      "ext": "xls",
+      "group": "data"
+    },
+    {
+      "ext": "png",
+      "group": "image"
+    },
+    {
+      "ext": "jpg",
+      "group": "image"
+    },
+    {
+      "ext": "jpeg",
+      "group": "image"
+    }
+  ]
+}
