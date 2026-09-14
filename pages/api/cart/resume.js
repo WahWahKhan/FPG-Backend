@@ -16,7 +16,7 @@ const allowedOrigins = [
     'https://fluidpowergroup.com.au',
     'https://www.fluidpowergroup.com.au',
 ].filter(Boolean);
-const vercelPreviewPattern = /^https:\/\/fluidpowergroup-(?:git-[a-z0-9-]+|[a-z0-9]+)-fluidpower\.vercel\.app$/;
+const vercelPreviewPattern = /^https:\/\/(?:fluidpowergroup-(?:git-[a-z0-9-]+|[a-z0-9]+)-fluidpower|fpg-frontend-(?:git-[a-z0-9-]+|[a-z0-9]+)-wahwahkhans-projects)\.vercel\.app$/;
 
 export default async function handler(req, res) {
     const origin = req.headers.origin;
