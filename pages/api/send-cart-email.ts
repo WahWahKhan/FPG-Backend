@@ -17,7 +17,7 @@ const allowedOrigins = [
   'https://fluidpowergroup.com.au',
   'https://www.fluidpowergroup.com.au'
 ];
-const vercelPreviewPattern = /^https:\/\/fluidpowergroup-[a-z0-9]+-fluidpower\.vercel\.app$/;
+const vercelPreviewPattern = /^https:\/\/fluidpowergroup-(?:git-[a-z0-9-]+|[a-z0-9]+)-fluidpower\.vercel\.app$/;
 
 // Simple in-memory rate limiting (Phase 1)
 const requestTracker = new Map<string, number[]>();

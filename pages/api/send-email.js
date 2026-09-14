@@ -43,7 +43,7 @@ const allowedOrigins = [
     'https://fluidpowergroup.com.au',
     'https://www.fluidpowergroup.com.au'
 ];
-const vercelPreviewPattern = /^https:\/\/fluidpowergroup-[a-z0-9]+-fluidpower\.vercel\.app$/;
+const vercelPreviewPattern = /^https:\/\/fluidpowergroup-(?:git-[a-z0-9-]+|[a-z0-9]+)-fluidpower\.vercel\.app$/;
 
 // --- Microsoft Graph Authentication ---
 async function getGraphAccessToken() {

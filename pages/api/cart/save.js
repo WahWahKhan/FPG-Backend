@@ -36,7 +36,7 @@ const allowedOrigins = [
     'https://fluidpowergroup.com.au',
     'https://www.fluidpowergroup.com.au',
 ].filter(Boolean);
-const vercelPreviewPattern = /^https:\/\/fluidpowergroup-[a-z0-9]+-fluidpower\.vercel\.app$/;
+const vercelPreviewPattern = /^https:\/\/fluidpowergroup-(?:git-[a-z0-9-]+|[a-z0-9]+)-fluidpower\.vercel\.app$/;
 
 // A customer-facing site origin we are willing to put in an outgoing email.
 function resolveSiteBase(origin) {
