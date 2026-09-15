@@ -30,7 +30,7 @@
     {
       "id": "flare",
       "label": "Flare",
-      "description": "JIC 37° flare"
+      "description": "JIC 37° flare with nut and sleeve"
     },
     {
       "id": "ring",
@@ -112,24 +112,6 @@
       "minSectionMm": 54
     },
     {
-      "id": "FPG-CSTM-22-30",
-      "material": "carbon",
-      "sizeSystem": "metric",
-      "odLabel": "22 mm",
-      "odMm": 22,
-      "wallMm": 3,
-      "grade": "EN10305-4 E235",
-      "swellProductId": "6379cf1eef180f00139601b1",
-      "allowedEnds": [
-        "none",
-        "flare",
-        "ring"
-      ],
-      "minClrMm": 44,
-      "maxClrMm": 110,
-      "minSectionMm": 66
-    },
-    {
       "id": "FPG-CSTI-38122",
       "material": "carbon",
       "sizeSystem": "imperial",
@@ -140,8 +122,7 @@
       "swellProductId": "68abbc509487080012ae61c1",
       "allowedEnds": [
         "none",
-        "flare",
-        "ring"
+        "flare"
       ],
       "minClrMm": 20,
       "maxClrMm": 48,
@@ -158,8 +139,7 @@
       "swellProductId": "68abbcd26448670012a834d1",
       "allowedEnds": [
         "none",
-        "flare",
-        "ring"
+        "flare"
       ],
       "minClrMm": 26,
       "maxClrMm": 64,
@@ -176,8 +156,7 @@
       "swellProductId": "68abbd5d4e0b4d0012d150ba",
       "allowedEnds": [
         "none",
-        "flare",
-        "ring"
+        "flare"
       ],
       "minClrMm": 32,
       "maxClrMm": 79,
@@ -194,30 +173,11 @@
       "swellProductId": "68abbdb1b5e0a50012603eac",
       "allowedEnds": [
         "none",
-        "flare",
-        "ring"
+        "flare"
       ],
       "minClrMm": 39,
       "maxClrMm": 95,
       "minSectionMm": 58
-    },
-    {
-      "id": "FPG-CSTI-25430000",
-      "material": "carbon",
-      "sizeSystem": "imperial",
-      "odLabel": "1\"",
-      "odMm": 25.4,
-      "wallMm": 3,
-      "grade": "EN10305-4 E235",
-      "swellProductId": "68abbdfe4fd6d80012e0d5b7",
-      "allowedEnds": [
-        "none",
-        "flare",
-        "ring"
-      ],
-      "minClrMm": 51,
-      "maxClrMm": 127,
-      "minSectionMm": 77
     },
     {
       "id": "FPG-SSTM-10-15",
@@ -292,42 +252,6 @@
       "minSectionMm": 54
     },
     {
-      "id": "FPG-SSTM-22-30",
-      "material": "stainless",
-      "sizeSystem": "metric",
-      "odLabel": "22 mm",
-      "odMm": 22,
-      "wallMm": 3,
-      "grade": "ASTM A213 TP304L",
-      "swellProductId": "6379d31428749a0012b8882f",
-      "allowedEnds": [
-        "none",
-        "flare",
-        "ring"
-      ],
-      "minClrMm": 44,
-      "maxClrMm": 110,
-      "minSectionMm": 66
-    },
-    {
-      "id": "FPG-SSTM-28-30",
-      "material": "stainless",
-      "sizeSystem": "metric",
-      "odLabel": "28 mm",
-      "odMm": 28,
-      "wallMm": 3,
-      "grade": "ASTM A213 TP304L",
-      "swellProductId": "6379d325b93a6a0012f101a1",
-      "allowedEnds": [
-        "none",
-        "flare",
-        "ring"
-      ],
-      "minClrMm": 56,
-      "maxClrMm": 140,
-      "minSectionMm": 84
-    },
-    {
       "id": "FPG-SSTI-1415",
       "material": "stainless",
       "sizeSystem": "imperial",
@@ -337,8 +261,7 @@
       "grade": "ASTM A213 TP304L",
       "swellProductId": "69069e27e8680e001256e207",
       "allowedEnds": [
-        "none",
-        "ring"
+        "none"
       ],
       "minClrMm": 13,
       "maxClrMm": 32,
@@ -355,8 +278,7 @@
       "swellProductId": "6379d1fe28749a0012b8881c",
       "allowedEnds": [
         "none",
-        "flare",
-        "ring"
+        "flare"
       ],
       "minClrMm": 20,
       "maxClrMm": 48,
@@ -373,8 +295,7 @@
       "swellProductId": "6379d21ac9be010017a1e384",
       "allowedEnds": [
         "none",
-        "flare",
-        "ring"
+        "flare"
       ],
       "minClrMm": 26,
       "maxClrMm": 64,
@@ -391,8 +312,7 @@
       "swellProductId": "6379d235c9be010017a1e386",
       "allowedEnds": [
         "none",
-        "flare",
-        "ring"
+        "flare"
       ],
       "minClrMm": 32,
       "maxClrMm": 79,
@@ -409,30 +329,11 @@
       "swellProductId": "6379d24bef180f00139601c4",
       "allowedEnds": [
         "none",
-        "flare",
-        "ring"
+        "flare"
       ],
       "minClrMm": 39,
       "maxClrMm": 95,
       "minSectionMm": 58
-    },
-    {
-      "id": "FPG-SSTI-1300000",
-      "material": "stainless",
-      "sizeSystem": "imperial",
-      "odLabel": "1\"",
-      "odMm": 25.4,
-      "wallMm": 3,
-      "grade": "ASTM A213 TP304L",
-      "swellProductId": "6868ec9191e10c00123e3357",
-      "allowedEnds": [
-        "none",
-        "flare",
-        "ring"
-      ],
-      "minClrMm": 51,
-      "maxClrMm": 127,
-      "minSectionMm": 77
     }
   ]
 }

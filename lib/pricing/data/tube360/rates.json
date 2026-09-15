@@ -16,25 +16,7 @@
       "maxOdMm": 28
     }
   ],
-  "bendRatePerBend": {
-    "small": 6,
-    "medium": 8,
-    "large": 10
-  },
-  "bendComplexityTiers": [
-    {
-      "minBends": 0,
-      "multiplier": 1
-    },
-    {
-      "minBends": 4,
-      "multiplier": 1.1
-    },
-    {
-      "minBends": 7,
-      "multiplier": 1.25
-    }
-  ],
+  "bendRatePerBend": 6,
   "endRatePerEnd": {
     "none": {
       "small": 0,

@@ -19,7 +19,7 @@
 // ============================================================================
 
 import { randomBytes } from 'crypto';
-import { applyCors, rejectMethod, getClientIp, createRateLimiter } from '../../../lib/tube360/http';
+import { applyCors, rejectMethod, getClientIp, createRateLimiter, resolveSiteBase } from '../../../lib/tube360/http';
 import * as cfg from '../../../lib/tube360/config';
 import * as sharepoint from '../../../lib/tube360/sharepoint';
 import * as uploadStore from '../../../lib/tube360/upload-store';
@@ -27,7 +27,7 @@ import { validateContact } from '../../../lib/tube360/contact-validation';
 import { validateTube360Spec } from '../../../lib/pricing/tube360';
 import { PricingError } from '../../../lib/pricing/errors';
 import { businessEmail, isMailConfigured, getGraphAccessToken, sendGraphMail, TESTING_MODE } from '../../../lib/graph-mail';
-import { generateTube360QuoteEmailTemplates } from '../../../lib/qstash-helper';
+import { generateTube360QuoteEmailTemplates, buildInvoiceBuilderQuoteLink } from '../../../lib/qstash-helper';
 
 const limiter = createRateLimiter(5, 60 * 60 * 1000); // 5 submissions / hour / (email and IP)
 
@@ -121,6 +121,16 @@ export default async function handler(req, res) {
   await Promise.all(uploads.map((u) => uploadStore.deleteUpload(u.uploadId).catch(() => {})));
 
   // ---- 6. Emails ----
+  const siteBase = resolveSiteBase(req.headers.origin);
+  const replyQuoteUrl = buildInvoiceBuilderQuoteLink({
+    siteBase,
+    ref,
+    contact,
+    labels: cfg.labelsFor(entry, spec),
+    spec: { totalLengthMm: spec.totalLengthMm, quantity: spec.quantity },
+    fileNames: moved.map((f) => f.name),
+    notes: notesText,
+  });
   const templates = generateTube360QuoteEmailTemplates(
     {
       ref,
@@ -131,6 +141,7 @@ export default async function handler(req, res) {
       files: moved,
       folderUrl: folder.webUrl,
       submittedAt: new Date().toISOString(),
+      replyQuoteUrl,
     },
     { testingMode: TESTING_MODE, businessEmailDisplay: businessEmail() }
   );

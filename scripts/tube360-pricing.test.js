@@ -22,7 +22,7 @@ const { PricingError } = require(BE + '/lib/pricing/errors');
 // Stub Swell prices (per metre) - copied from Swell 2026-09-12.
 const STUB_PRICES = {
   '6379ceeab93a6a0012f10173': 9.25,  // FPG-CSTM-12-15
-  '6379d325b93a6a0012f101a1': 33.55, // FPG-SSTM-28-30
+  '6379d304a5fd7a00120a63e4': 20.50, // FPG-SSTM-18-20
   '6379d24bef180f00139601c4': 22.95, // FPG-SSTI-342000
 };
 const deps = {
@@ -89,33 +89,33 @@ const base = {
     check(res.name === 'TUBE360 Custom Tube', 'worked example: line name');
   });
 
-  // 2. Complexity tier (5 bends -> x1.1):
-  //    material 9.25 x 2 = 18.50 ; bending 5 x 6 x 1.1 = 33.00 ; ends 0 ;
-  //    perTube 51.50 ; x1 ; + setup 25 = 76.50
-  await expectAmount('5 bends complexity tier', {
+  // 2. Linear bend pricing (5 bends, flat rate, no complexity multiplier):
+  //    material 9.25 x 2 = 18.50 ; bending 5 x 6 = 30.00 ; ends 0 ;
+  //    perTube 48.50 ; x1 ; + setup 25 = 73.50
+  await expectAmount('5 bends, flat linear rate', {
     ...base, endA: 'none', endB: 'none', totalLengthMm: 2000, quantity: 1,
     sectionsMm: [400, 300, 300, 300, 300, 400], anglesDeg: [90, 90, 90, 90, 90],
-  }, 76.5);
+  }, 73.5);
 
-  // 3. Straight tube (0 bends -> no setup fee), large band, ring both ends:
-  //    material 33.55 x 1.5 = 50.325 -> 50.33 ; ends 20 + 20 ; perTube 90.33 ; x3 = 270.99
+  // 3. Straight tube (0 bends -> no setup fee), medium band, ring both ends:
+  //    material 20.50 x 1.5 = 30.75 ; ends 15 + 15 (medium ring) ; perTube 60.75 ; x3 = 182.25
   await expectAmount('straight tube, no setup fee', {
-    catalogId: 'FPG-SSTM-28-30', endA: 'ring', endB: 'ring', totalLengthMm: 1500, quantity: 3,
+    catalogId: 'FPG-SSTM-18-20', endA: 'ring', endB: 'ring', totalLengthMm: 1500, quantity: 3,
     bendRadiusMm: null, sectionsMm: [1500], anglesDeg: [],
-  }, 270.99, (res) => {
+  }, 182.25, (res) => {
     check(res.breakdown.setupFee === 0, 'straight tube: setup 0', res.breakdown.setupFee);
-    check(res.breakdown.band === 'large', 'straight tube: band large', res.breakdown.band);
+    check(res.breakdown.band === 'medium', 'straight tube: band medium', res.breakdown.band);
     check(res.breakdown.spec.bendRadiusMm === null, 'straight tube: radius normalised to null');
   });
 
-  // 4. Medium band, 7 bends (x1.25), imperial 3/4":
-  //    material 22.95 x 5.000 = 114.75 ; bending 7 x 8 x 1.25 = 70.00 ; ends 10 + 0 ;
-  //    perTube 194.75 ; x1 ; + setup 25 = 219.75
+  // 4. Medium band, 7 bends, flat linear rate, imperial 3/4":
+  //    material 22.95 x 5.000 = 114.75 ; bending 7 x 6 = 42.00 ; ends 10 + 0 ;
+  //    perTube 166.75 ; x1 ; + setup 25 = 191.75
   await expectAmount('7 bends medium band', {
     catalogId: 'FPG-SSTI-342000', endA: 'flare', endB: 'none', totalLengthMm: 5000, quantity: 1,
     bendRadiusMm: 39, sectionsMm: [600, 600, 600, 800, 800, 600, 500, 500],
     anglesDeg: [90, 45, 30, 90, 15.5, 60, 120],
-  }, 219.75);
+  }, 191.75);
 
   // 5. Freight threshold: exactly 1000 -> no flag ; 1001 -> flag
   await expectAmount('1000mm exactly', {
@@ -145,10 +145,10 @@ const base = {
   await expectReject('section below min', { ...base, sectionsMm: [49, 1151, 1000, 800] }, 'section 1');
   await expectReject('sections/angles count mismatch', { ...base, anglesDeg: [90, 45] }, 'one more section');
   await expectReject('angle 0.5 (< min 1)', { ...base, anglesDeg: [0.5, 45, 90] }, 'bend 1 angle');
-  await expectReject('angle 181', { ...base, anglesDeg: [90, 181, 90] }, 'bend 2 angle');
+  await expectReject('angle 191', { ...base, anglesDeg: [90, 191, 90] }, 'bend 2 angle');
   await expectReject('angle 2 decimals', { ...base, anglesDeg: [90, 45, 90.25] }, 'bend 3 angle');
-  await expectReject('radius below min', { ...base, bendRadiusMm: 23 }, 'bend radius');
-  await expectReject('radius above max', { ...base, bendRadiusMm: 61 }, 'bend radius');
+  await expectReject('radius below fixed value', { ...base, bendRadiusMm: 23 }, 'bend radius');
+  await expectReject('radius above fixed value', { ...base, bendRadiusMm: 61 }, 'bend radius');
   await expectReject('radius missing with bends', { ...base, bendRadiusMm: null }, 'bend radius');
   await expectReject('11 bends', {
     ...base, totalLengthMm: 6000, sectionsMm: Array(12).fill(500), anglesDeg: Array(11).fill(90),
