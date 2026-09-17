@@ -1,37 +1,36 @@
 /* eslint-disable */
 // ============================================================================
 // PRICING PARITY SWEEP — frontend (what the customer sees) vs backend (what
-// PayPal is charged). Catches ANY divergence between the two independent
-// pricing implementations, across every configurator option, in ONE run.
+// PayPal is charged). Catches ANY divergence between two INDEPENDENT pricing
+// implementations of the same product, in ONE run.
 //
 // Run:  node scripts/pricing-parity.test.js
 //   (from the backend-sandbox root; needs its node_modules for the pricing libs)
 //
 // "Frontend truth" is loaded/replicated directly from the frontend + PWA source:
-//   - TRAC360   : data/trac360/<per-addon>.json + circuits.json + pricing.ts formula
-//   - FUNCTION360: data/function360/<component>.json + summary.tsx variant fns
 //   - HOSE360   : HoseCalculator components/Prices/*.js + the PWA price formula
+//     (hardcoded inline below, not loaded from a frontend file — HOSE360's
+//     migration is separately deferred by the owner, so this pair genuinely
+//     still has two independent implementations that CAN drift).
 // Website is Swell-priced (a single source of truth) so it cannot drift — skipped.
+//
+// TRAC360 and FUNCTION360 sweeps were RETIRED 2026-09-17 (Plan 04 / Trac360-
+// Function360 pricing consolidation): the frontend no longer holds ANY copy of
+// their pricing or catalogue data (deleted `data/trac360/*.json` and
+// `data/function360/*.json` once both apps' configurator pages were rewired
+// to fetch from the backend's own `/api/{trac360,function360}/options` and
+// `/price` endpoints). There is now only ONE implementation for each, so the
+// class of drift these two sweeps existed to catch is structurally
+// impossible - a parity check against a frontend copy that no longer exists
+// would be meaningless, not a regression indicator. See
+// TUBE360_PLAN/reports/05_TRAC360_FUNCTION360_PRICING_REPORT.md and
+// TUBE360_PLAN/reports/05_PAYPAL_PREVIEW_TESTING_REPORT.md (which caught this
+// script silently throwing post-migration, via audit) for the full history.
+// If either product ever regains a second, independently-maintained pricing
+// copy, add its sweep back using this HOSE360 sweep as the template.
 // ============================================================================
 
-const fs = require('fs');
 const BE = __dirname + '/..';
-// Frontend "source of truth" root. Override with FE_ROOT; otherwise use the first
-// candidate that exists (live frontend, then sandbox). Their pricing data is kept
-// in sync, so either works — this just lets the harness run from either backend.
-const FE = (() => {
-  const candidates = [
-    process.env.FE_ROOT,
-    '/Users/aaa/Documents/Website/FrontEnd/fpg-backup-frontend',
-    '/Users/aaa/Documents/Website/FrontEnd/fpg-backup-frontend-sandbox',
-  ].filter(Boolean);
-  const found = candidates.find((p) => fs.existsSync(p + '/data/trac360/circuits.json'));
-  if (!found) throw new Error('Frontend root not found; set FE_ROOT to the frontend project path.');
-  return found;
-})();
-
-const { priceTrac360Line } = require(BE + '/lib/pricing/trac360');
-const { priceFunction360Line } = require(BE + '/lib/pricing/function360');
 const { priceHose360Line, _internals } = require(BE + '/lib/pricing/hose360');
 
 let pass = 0, fail = 0;
@@ -40,112 +39,6 @@ const near = (a, b) => Math.abs(Number(a) - Number(b)) < 0.005;
 function ck(cond, label, extra) {
   if (cond) { pass++; }
   else { fail++; fails.push(label + (extra ? `  (${extra})` : '')); }
-}
-
-// ============================================================================
-// TRAC360
-// ============================================================================
-function trac360Sweep() {
-  const circuits = require(FE + '/data/trac360/circuits.json');
-  const circuitList = Array.isArray(circuits) ? circuits : circuits.circuits || [];
-  const addonFiles = ['valve-adaptors', 'tractor-hose-kit', 'hose-protection', 'joystick-upgradation', 'mounting-brackets']
-    .map((f) => require(FE + `/data/trac360/${f}.json`));
-
-  // Frontend formula (utils/trac360/pricing.ts): base(1250 if opType & no circuit)
-  // + circuit.price + Σ(addon.basePrice + selectedSubOption.additionalPrice).
-  const feAddonPrice = (addon, subId) => {
-    let p = Number(addon.basePrice) || 0;
-    if (subId && Array.isArray(addon.subOptions)) {
-      const s = addon.subOptions.find((o) => o.id === subId);
-      if (s) p += Number(s.additionalPrice) || 0;
-    }
-    return p;
-  };
-
-  let n = 0;
-  // 1) Every circuit alone.
-  for (const c of circuitList) {
-    const be = priceTrac360Line({ config: { operationTypeId: 'op-x', circuitId: c.id, addons: [] } }).amount;
-    ck(near(be, c.price), `TRAC360 circuit ${c.id}`, `FE $${c.price} vs BE $${be}`); n++;
-  }
-  // 2) Path A: operation type, no circuit -> flat 1250.
-  {
-    const be = priceTrac360Line({ config: { operationTypeId: 'op-x', circuitId: null, addons: [] } }).amount;
-    ck(near(be, 1250), `TRAC360 path-A base (no circuit)`, `FE $1250 vs BE $${be}`); n++;
-  }
-  // 3) Every addon, with null sub-option AND each sub-option, on a fixed circuit base.
-  const baseCircuit = circuitList.find((c) => c.id === '1-circuit') || circuitList[0];
-  for (const addon of addonFiles) {
-    const subIds = [null, ...((addon.subOptions || []).map((s) => s.id))];
-    for (const subId of subIds) {
-      const be = priceTrac360Line({ config: {
-        operationTypeId: 'op-x', circuitId: baseCircuit.id,
-        addons: [{ id: addon.id, selectedSubOptionId: subId }] } }).amount;
-      const exp = Number(baseCircuit.price) + feAddonPrice(addon, subId);
-      ck(near(be, exp), `TRAC360 ${addon.id} + sub[${subId || 'none'}]`, `FE $${exp} vs BE $${be}`); n++;
-    }
-  }
-  // 4) A full multi-addon cart.
-  {
-    const addonsSel = addonFiles.map((a) => ({ id: a.id, selectedSubOptionId: (a.subOptions && a.subOptions[0] && a.subOptions[0].id) || null }));
-    const be = priceTrac360Line({ config: { operationTypeId: 'op-x', circuitId: '2-circuit', addons: addonsSel } }).amount;
-    const circ = circuitList.find((c) => c.id === '2-circuit');
-    const exp = Number(circ.price) + addonFiles.reduce((s, a, i) => s + feAddonPrice(a, addonsSel[i].selectedSubOptionId), 0);
-    ck(near(be, exp), `TRAC360 full cart (2-circuit + all addons)`, `FE $${exp} vs BE $${be}`); n++;
-  }
-  return n;
-}
-
-// ============================================================================
-// FUNCTION360  (variant fns replicated verbatim from summary.tsx)
-// ============================================================================
-function function360Sweep() {
-  const data = {
-    diverterValve: require(FE + '/data/function360/diverter-valve.json'),
-    quickCouplings: require(FE + '/data/function360/quick-couplings.json'),
-    adaptors: require(FE + '/data/function360/adaptors.json'),
-    hydraulicHoses: require(FE + '/data/function360/hydraulic-hoses.json'),
-    electrical: require(FE + '/data/function360/electrical.json'),
-    mountingBrackets: require(FE + '/data/function360/mounting-brackets.json'),
-  };
-  const V = { // frontend variant selectors (summary.tsx)
-    diverterValve: (hp, ft) => { if (!hp || !ft) return 'electric_3rd_below_50hp'; const s = hp === 'below_50hp' ? 'below_50hp' : 'above_50hp'; if (ft === 'live_3rd') return `live_3rd_${s}`; if (ft === 'electric_3rd_4th') return `electric_3rd_4th_${s}`; return `electric_3rd_${s}`; },
-    quickCouplings: (hp, ft) => { if (!hp || !ft) return 'default_below_50hp'; const s = hp === 'below_50hp' ? 'below_50hp' : 'above_50hp'; if (ft === 'electric_3rd_4th') return `electric_3rd_4th_${s}`; return `default_${s}`; },
-    adaptors: (hp) => !hp ? 'below_50hp' : (hp === 'above_50hp' ? 'above_50hp' : 'below_50hp'),
-    hydraulicHoses: (hp) => !hp ? 'below_50hp' : (hp === 'above_50hp' ? 'above_50hp' : 'below_50hp'),
-    electrical: (_hp, ft) => !ft ? 'electric_3rd' : (ft === 'electric_3rd_4th' ? 'electric_3rd_4th' : 'electric_3rd'),
-    mountingBrackets: (_hp, ft) => !ft ? 'default' : (ft === 'electric_3rd_4th' ? 'electric_3rd_4th' : 'default'),
-  };
-  const feComponentPrice = (key, hp, ft) => {
-    const vkey = V[key](hp, ft);
-    const v = data[key].variants && data[key].variants[vkey];
-    return v ? Number(v.price) : NaN;
-  };
-
-  const keys = ['diverterValve', 'quickCouplings', 'adaptors', 'hydraulicHoses', 'electrical', 'mountingBrackets'];
-  const HPs = ['below_50hp', 'above_50hp', null];
-  const FTs = ['live_3rd', 'electric_3rd', 'electric_3rd_4th', null];
-  let n = 0;
-  for (const hp of HPs) for (const ft of FTs) {
-    // all components selected
-    const sel = {}; keys.forEach((k) => (sel[k] = true));
-    let be;
-    try { be = priceFunction360Line({ selectedComponents: sel, equipment: { horsepower: hp, functionType: ft } }).amount; }
-    catch (e) { ck(false, `FUNCTION360 all comps hp=${hp} ft=${ft}`, 'BACKEND THREW: ' + e.message); n++; continue; }
-    const exp = keys.reduce((s, k) => s + feComponentPrice(k, hp, ft), 0);
-    ck(near(be, exp), `FUNCTION360 all comps hp=${hp} ft=${ft}`, `FE $${exp} vs BE $${be}`); n++;
-
-    // each component individually
-    for (const k of keys) {
-      const one = {}; one[k] = true;
-      let b;
-      try { b = priceFunction360Line({ selectedComponents: one, equipment: { horsepower: hp, functionType: ft } }).amount; }
-      catch (e) { ck(false, `FUNCTION360 ${k} hp=${hp} ft=${ft}`, 'BACKEND THREW: ' + e.message); n++; continue; }
-      const e2 = feComponentPrice(k, hp, ft);
-      ck(near(b, e2), `FUNCTION360 ${k} hp=${hp} ft=${ft}`, `FE $${e2} vs BE $${b}`); n++;
-    }
-  }
-  return n;
 }
 
 // ============================================================================
@@ -241,16 +134,12 @@ function hose360Sweep() {
 
 // ============================================================================
 console.log('════════════════════ PRICING PARITY SWEEP ════════════════════');
-const t1 = trac360Sweep();
-const t2 = function360Sweep();
 const t3 = hose360Sweep();
-console.log(`TRAC360:     ${t1} checks`);
-console.log(`FUNCTION360: ${t2} checks`);
 console.log(`HOSE360:     ${t3} checks`);
 console.log('───────────────────────────────────────────────────────────────');
 if (fails.length) {
   console.log(`\n❌ ${fails.length} MISMATCH(ES):`);
   for (const f of fails) console.log('   • ' + f);
 }
-console.log(`\n${fail === 0 ? '✅' : '❌'} TOTAL: ${pass} passed, ${fail} failed  (${t1 + t2 + t3} price points checked)`);
+console.log(`\n${fail === 0 ? '✅' : '❌'} TOTAL: ${pass} passed, ${fail} failed  (${t3} price points checked)`);
 process.exit(fail === 0 ? 0 : 1);

@@ -9,6 +9,7 @@ import { pushToQStash, generateEmailTemplates } from '../../../lib/qstash-helper
 import { generateInvoicePDF } from '../../../lib/invoice/invoice-generator';
 import * as quoteStore from '../../../lib/quote-store';
 import { equalToCent } from '../../../lib/pricing/money';
+import { applyPayPalCors, resolvePayPalCredentials } from '../../../lib/paypal/env';
 
 // ============================================================================
 // SERVER-AUTHORITY: rebuild the order arrays from the persisted server QUOTE.
@@ -309,64 +310,20 @@ async function updateSwellInventory(products, orderId) {
 // MAIN API HANDLER
 // ========================================
 export default async function handler(req, res) {
-    const origin = req.headers.origin;
-
-    console.log('📍 Request origin:', origin);
+    console.log('📍 Request origin:', req.headers.origin);
     console.log('📍 Request method:', req.method);
 
-    const allowedOrigins = [
-        'http://localhost:3000',
-        'http://localhost:3001',
-        'https://fluidpowergroup.com.au',
-        'https://www.fluidpowergroup.com.au',
-    ];
-
-    if (origin && origin.includes('.vercel.app')) {
-        allowedOrigins.push(origin);
-    }
-
-    const isAllowed = allowedOrigins.includes(origin);
-
-    if (isAllowed && origin) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    } else if (!origin) {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-    } else {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-server-key');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Max-Age', '86400');
-
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-
-    if (req.method !== 'POST') { 
-        res.setHeader('Allow', ['POST', 'OPTIONS']); 
-        return res.status(405).json({ success: false, error: `Method ${req.method} Not Allowed` }); 
+    // --- CORS (shared allowlist, see lib/paypal/env.js) ---
+    if (applyPayPalCors(req, res, { methods: ['POST'], credentials: true, optionsStatus: 200 })) return;
+    if (req.method !== 'POST') {
+        res.setHeader('Allow', ['POST', 'OPTIONS']);
+        return res.status(405).json({ success: false, error: `Method ${req.method} Not Allowed` });
     }
 
     swell.init(process.env.SWELL_STORE_ID, process.env.SWELL_SECRET_KEY);
 
-    const isVercelPreview = process.env.VERCEL_ENV === 'preview';
-    let PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_API_BASE;
-
-    if (TESTING_MODE) {
-        const useTestSandbox = process.env.TEST_USE_SANDBOX !== 'false';
-        PAYPAL_CLIENT_ID = useTestSandbox ? process.env.SANDBOX_CLIENT_ID_TEST : process.env.PRODUCTION_CLIENT_ID_TEST;
-        PAYPAL_CLIENT_SECRET = useTestSandbox ? process.env.SANDBOX_SECRET_TEST : process.env.PRODUCTION_SECRET_TEST;
-        PAYPAL_API_BASE = useTestSandbox ? 'https://api-m.sandbox.paypal.com' : 'https://api-m.paypal.com';
-    } else {
-        const forceSandbox = process.env.PAYPAL_MODE === 'sandbox';
-        const forceProduction = process.env.PAYPAL_MODE === 'production';
-        const USE_SANDBOX = forceProduction ? false : (forceSandbox || isVercelPreview || process.env.NODE_ENV !== 'production');
-        PAYPAL_CLIENT_ID = USE_SANDBOX ? process.env.SANDBOX_CLIENT_ID : process.env.PRODUCTION_CLIENT_ID;
-        PAYPAL_CLIENT_SECRET = USE_SANDBOX ? process.env.SANDBOX_SECRET : process.env.PRODUCTION_SECRET;
-        PAYPAL_API_BASE = USE_SANDBOX ? 'https://api-m.sandbox.paypal.com' : 'https://api-m.paypal.com';
-    }
+    // --- PayPal environment selection (shared with create-order, see lib/paypal/env.js) ---
+    const { clientId: PAYPAL_CLIENT_ID, clientSecret: PAYPAL_CLIENT_SECRET, apiBase: PAYPAL_API_BASE } = resolvePayPalCredentials();
 
     if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {
         console.error(`❌ Missing PayPal credentials`);
@@ -497,7 +454,7 @@ export default async function handler(req, res) {
                 error: 'We could not verify your order total just now. Your payment was NOT taken — please try again in a moment.',
             });
         }
-        console.error(`🚨 REJECTED client-priced capture for ${orderID}: no server quote exists for this order. Payload origin: ${origin || 'none'}`);
+        console.error(`🚨 REJECTED client-priced capture for ${orderID}: no server quote exists for this order. Payload origin: ${req.headers.origin || 'none'}`);
         return res.status(400).json({
             success: false,
             error: 'This order could not be verified against a server-calculated price. Your payment was NOT taken. Please start the checkout again.',

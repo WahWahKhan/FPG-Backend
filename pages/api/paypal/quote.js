@@ -11,27 +11,12 @@
 // ============================================================================
 
 import { priceCart, PricingError } from '../../../lib/pricing';
+import { applyPayPalCors } from '../../../lib/paypal/env';
 
 export default async function handler(req, res) {
-    // CORS policy copied verbatim from create-order.js — keep them identical.
-    const allowedOrigins = [
-        'http://localhost:19006',
-        'http://localhost:3000',
-        'https://fluidpowergroup.com.au',
-    ];
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    } else {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Max-Age', '86400');
-
-    if (req.method === 'OPTIONS') {
-        return res.status(204).end();
-    }
+    // --- CORS (shared allowlist, see lib/paypal/env.js — was previously
+    // copy-pasted "verbatim from create-order.js", now genuinely shared) ---
+    if (applyPayPalCors(req, res, { methods: ['GET', 'POST'], optionsStatus: 204 })) return;
     if (req.method !== 'POST') {
         res.setHeader('Allow', ['POST', 'OPTIONS']);
         return res.status(405).json({ error: `Method ${req.method} Not Allowed` });

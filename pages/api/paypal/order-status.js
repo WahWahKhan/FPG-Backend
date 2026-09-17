@@ -4,6 +4,7 @@
 
 import fetch from 'node-fetch';
 import * as quoteStore from '../../../lib/quote-store';
+import { applyPayPalCors } from '../../../lib/paypal/env';
 
 // Simple in-memory order status tracking
 // 🔧 NOTE: In production, replace this with a database (MongoDB, PostgreSQL, etc.)
@@ -65,43 +66,12 @@ setInterval(() => {
 // MAIN API HANDLER
 // ========================================
 export default async function handler(req, res) {
-    // CORS headers
-    const origin = req.headers.origin;
-    const allowedOrigins = [
-        'http://localhost:3000',
-        'http://localhost:3001',
-        'https://fluidpowergroup.com.au',
-        'https://www.fluidpowergroup.com.au',
-    ];
-
-    if (origin && origin.includes('.vercel.app')) {
-        allowedOrigins.push(origin);
-    }
-
-    const isAllowed = allowedOrigins.includes(origin);
-
-    if (isAllowed && origin) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    } else if (!origin) {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-    } else {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-
-    // Handle OPTIONS preflight
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-
-    // Only allow POST
+    // --- CORS (shared allowlist, see lib/paypal/env.js) ---
+    if (applyPayPalCors(req, res, { methods: ['POST'], credentials: true, optionsStatus: 200 })) return;
     if (req.method !== 'POST') {
-        return res.status(405).json({ 
-            success: false, 
-            error: `Method ${req.method} not allowed` 
+        return res.status(405).json({
+            success: false,
+            error: `Method ${req.method} not allowed`
         });
     }
 

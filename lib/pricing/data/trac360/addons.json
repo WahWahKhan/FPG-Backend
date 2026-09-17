@@ -1,80 +1,130 @@
 [
-    {
-      "id": "valve-adaptors",
-      "name": "Valve with Adaptors",
-      "description": "Include Couplings & Adaptors",
-      "basePrice": 120,
-      "currency": "AUD",
-      "swellProductId": "valve-adaptors-addon",
-      "subOptions": null
-    },
-    {
-      "id": "tractor-hose-kit",
-      "name": "Tractor Hose Kit",
-      "description": "Tractor Hose Kit",
-      "basePrice": 240,
-      "currency": "AUD",
-      "swellProductId": "tractor-hose-kit-addon",
-      "subOptions": null
-    },
-    {
-      "id": "hose-protection",
-      "name": "Hose Protection",
-      "description": "Protect Hose Kit",
-      "basePrice": 80,
-      "currency": "AUD",
-      "swellProductId": "hose-protection-addon",
-      "subOptions": [
-        {
-          "id": "nylon-sleeve",
-          "name": "Nylon Sleeve",
-          "additionalPrice": 0,
-          "image": "/trac360/nylon-sleeve.png"
-        },
-        {
-          "id": "spiral-wrap",
-          "name": "Spiral Wrap",
-          "additionalPrice": 0,
-          "image": "/trac360/spiral-wrap.png"
-        }
-      ]
-    },
-    {
-      "id": "joystick-upgradation",
-      "name": "Joystick Upgradation",
-      "description": "Upgrade Your Joystick",
-      "basePrice": 110,
-      "currency": "AUD",
-      "swellProductId": "joystick-upgradation-addon",
-      "subOptions": [
-        {
-          "id": "one-button",
-          "name": "One Button",
-          "additionalPrice": 0,
-          "image": "/trac360/one-button.png"
-        },
-        {
-          "id": "two-button",
-          "name": "Two Button",
-          "additionalPrice": 0,
-          "image": "/trac360/two-button.png"
-        }
-      ]
-    },
-    {
-      "id": "mounting-brackets",
-      "name": "Mounting Brackets",
-      "description": "Valve & Joystick Brackets",
-      "basePrice": 120,
-      "currency": "AUD",
-      "swellProductId": "mounting-brackets-addon",
-      "subOptions": [
-        {
-          "id": "valve-joystick-bracket",
-          "name": "Valve & Joystick Brackets",
-          "additionalPrice": 0,
-          "image": "/trac360/mounting-bracket.png"
-        }
-      ]
+  {
+    "id": "valve-adaptors",
+    "name": "Valve with Adaptors",
+    "description": "Include Couplings & Adaptors",
+    "basePrice": 120,
+    "currency": "AUD",
+    "swellProductId": "valve-adaptors-addon",
+    "subOptions": null,
+    "variants": {
+      "default": {
+        "image": "/trac360/valve-adaptors.png",
+        "title": "Include Couplings & Adaptors",
+        "components": [
+          "Male Quick Release Couplings",
+          "Adaptors to suit Valve",
+          "Adaptors for Supply, PB, LS, Tank Ports"
+        ]
+      },
+      "setupBCD": {
+        "image": "/trac360/valve-adaptors-2.png",
+        "title": "Include Couplings & Adaptors",
+        "components": [
+          "1/2\" BSPP Male Couplings",
+          "Adaptors to suit Selected Valve",
+          "Adaptors for Supply, PB, LS, Tank Ports"
+        ]
+      }
     }
-  ]
+  },
+  {
+    "id": "tractor-hose-kit",
+    "name": "Tractor Hose Kit",
+    "description": "Tractor Hose Kit",
+    "basePrice": 240,
+    "currency": "AUD",
+    "swellProductId": "tractor-hose-kit-addon",
+    "subOptions": null,
+    "image": "/trac360/hose-kit.png",
+    "components": [
+      "1 x Supply Hose",
+      "1 x Tank/Dump Hose",
+      "1 x Power/Beyond or Load-Sense Hose",
+      "Adaptors for Supply, PB, Tank Ports Tractor End"
+    ],
+    "note": "Note: Hose Cut Lengths auto-calculated"
+  },
+  {
+    "id": "hose-protection",
+    "name": "Hose Protection",
+    "description": "Protect Hose Kit",
+    "basePrice": 80,
+    "currency": "AUD",
+    "swellProductId": "hose-protection-addon",
+    "subOptions": [
+      {
+        "id": "nylon-sleeve",
+        "name": "Nylon Sleeve",
+        "additionalPrice": 0,
+        "image": "/trac360/nylon-sleeve.png",
+        "components": [
+          "Nylon sleeve covering for hose protection"
+        ]
+      },
+      {
+        "id": "spiral-wrap",
+        "name": "Spiral Wrap",
+        "additionalPrice": 0,
+        "image": "/trac360/spiral-wrap.png",
+        "components": [
+          "Spiral wrap covering for hose protection"
+        ]
+      }
+    ],
+    "subtitle": "Cover Your Hoses with Hose Protection Nylon Sleeve or Spiral Wrap",
+    "note": "Pick any Choice \u2014 No Price Difference"
+  },
+  {
+    "id": "joystick-upgradation",
+    "name": "Joystick Upgradation",
+    "description": "Upgrade Your Joystick",
+    "basePrice": 110,
+    "currency": "AUD",
+    "swellProductId": "joystick-upgradation-addon",
+    "subOptions": [
+      {
+        "id": "one-button",
+        "name": "One Button",
+        "additionalPrice": 0,
+        "image": "/trac360/one-button.png",
+        "components": [
+          "Joystick with One or Two Electric Buttons to run a 3rd or 4th Function",
+          "Pick any Choice \u2014 No Price Difference"
+        ]
+      },
+      {
+        "id": "two-button",
+        "name": "Two Button",
+        "additionalPrice": 0,
+        "image": "/trac360/two-button.png",
+        "components": [
+          "Joystick with One or Two Electric Buttons to run a 3rd or 4th Function",
+          "Pick any Choice \u2014 No Price Difference"
+        ]
+      }
+    ],
+    "subtitle": "Joystick with Electric Buttons",
+    "note": "Pick any Choice \u2014 No Price Difference"
+  },
+  {
+    "id": "mounting-brackets",
+    "name": "Mounting Brackets",
+    "description": "Valve & Joystick Brackets",
+    "basePrice": 120,
+    "currency": "AUD",
+    "swellProductId": "mounting-brackets-addon",
+    "subOptions": [
+      {
+        "id": "valve-joystick-bracket",
+        "name": "Valve & Joystick Brackets",
+        "additionalPrice": 0,
+        "image": "/trac360/mounting-bracket.png",
+        "components": [
+          "Standard Valve & Joystick with Hardware"
+        ]
+      }
+    ],
+    "note": "Fits Joystick/Valve Ends \u2014 Tractor End may still require adjustments"
+  }
+]

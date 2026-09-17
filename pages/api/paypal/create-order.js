@@ -16,16 +16,13 @@ import fetch from 'node-fetch';
 import { priceCart, PricingError } from '../../../lib/pricing';
 import { resolveDevPricing } from '../../../lib/pricing/dev-pricing';
 import * as quoteStore from '../../../lib/quote-store';
+import { applyPayPalCors, resolvePayPalCredentials } from '../../../lib/paypal/env';
 
-// --- PayPal environment selection (unchanged) ---
-const isVercelPreview = process.env.VERCEL_ENV === 'preview';
-const forceSandbox = process.env.PAYPAL_MODE === 'sandbox';
-const forceProduction = process.env.PAYPAL_MODE === 'production';
-
-const USE_SANDBOX = forceProduction ? false : (forceSandbox || isVercelPreview || process.env.NODE_ENV !== 'production');
-const PAYPAL_CLIENT_ID = USE_SANDBOX ? process.env.SANDBOX_CLIENT_ID : process.env.PRODUCTION_CLIENT_ID;
-const PAYPAL_CLIENT_SECRET = USE_SANDBOX ? process.env.SANDBOX_SECRET : process.env.PRODUCTION_SECRET;
-const PAYPAL_API_BASE = USE_SANDBOX ? 'https://api-m.sandbox.paypal.com' : 'https://api-m.paypal.com';
+// --- PayPal environment selection ---
+// Resolved once at module load (fixed for the life of a serverless instance,
+// same as before) via the shared resolver so create-order/capture-order can
+// never disagree about which PayPal app owns a given order.
+const { clientId: PAYPAL_CLIENT_ID, clientSecret: PAYPAL_CLIENT_SECRET, apiBase: PAYPAL_API_BASE } = resolvePayPalCredentials();
 
 // --- Saved-cart price-hold helpers (slice-2) ---
 const PRICE_HOLD_MS = 7 * 24 * 60 * 60 * 1000; // honour the saved price for 7 days
@@ -67,25 +64,8 @@ async function getPayPalAccessToken() {
 }
 
 export default async function handler(req, res) {
-    // --- CORS (unchanged policy) ---
-    const allowedOrigins = [
-        'http://localhost:19006',
-        'http://localhost:3000',
-        'https://fluidpowergroup.com.au',
-    ];
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    } else {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Max-Age', '86400');
-
-    if (req.method === 'OPTIONS') {
-        return res.status(204).end();
-    }
+    // --- CORS (shared allowlist, see lib/paypal/env.js) ---
+    if (applyPayPalCors(req, res, { methods: ['GET', 'POST'], optionsStatus: 204 })) return;
     if (req.method !== 'POST') {
         res.setHeader('Allow', ['POST', 'OPTIONS']);
         return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
