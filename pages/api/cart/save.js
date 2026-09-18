@@ -13,6 +13,7 @@ import { randomUUID } from 'crypto';
 import * as quoteStore from '../../../lib/quote-store';
 import { generateSavedCartEmailTemplates } from '../../../lib/qstash-helper';
 import { priceCart } from '../../../lib/pricing';
+const { applyCors, resolveSiteBase } = require('../../../lib/tube360/http');
 
 const TESTING_MODE = process.env.TESTING_MODE === 'true';
 const AZURE_TENANT_ID = process.env.AZURE_TENANT_ID;
@@ -26,27 +27,10 @@ const SENDER_EMAIL = TESTING_MODE
     ? (process.env.SENDER_EMAIL_TEST || process.env.SENDER_EMAIL)
     : process.env.SENDER_EMAIL;
 
-const PROD_SITE_URL = 'https://fluidpowergroup.com.au';
-const allowedOrigins = [
-    process.env.LOCAL_DEV_URL,
-    process.env.API_BASE_URL,
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:19006',
-    'https://fluidpowergroup.com.au',
-    'https://www.fluidpowergroup.com.au',
-].filter(Boolean);
-const vercelPreviewPattern = /^https:\/\/(?:fluidpowergroup-(?:git-[a-z0-9-]+|[a-z0-9]+)-fluidpower|fpg-frontend-(?:git-[a-z0-9-]+|[a-z0-9]+)-wahwahkhans-projects)\.vercel\.app$/;
-
-// A customer-facing site origin we are willing to put in an outgoing email.
-function resolveSiteBase(origin) {
-    if (!origin) return PROD_SITE_URL;
-    if (allowedOrigins.includes(origin)) return origin;
-    if (vercelPreviewPattern.test(origin)) return origin;
-    // Allow any localhost:<port> only during local/test (sandbox runs on :3010).
-    if (TESTING_MODE && /^http:\/\/localhost:\d+$/.test(origin)) return origin;
-    return PROD_SITE_URL;
-}
+// CORS allowlist + site-base resolution now live in lib/tube360/http.js
+// (single source of truth for the Vercel-preview pattern, shared with
+// /api/tube360/*) — see [[fpg-save-cart-feature]] memory for the drift this
+// used to cause.
 
 // --- Simple in-memory rate limiting (per email + IP) ---
 const requestTracker = new Map();
@@ -100,14 +84,8 @@ const isValidEmail = (e) => typeof e === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$
 
 export default async function handler(req, res) {
     const origin = req.headers.origin;
-    if (origin && (allowedOrigins.includes(origin) || vercelPreviewPattern.test(origin) ||
-        (TESTING_MODE && /^http:\/\/localhost:\d+$/.test(origin)))) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (applyCors(req, res, ['POST'])) return; // OPTIONS preflight already answered
 
-    if (req.method === 'OPTIONS') return res.status(204).end();
     if (req.method !== 'POST') {
         res.setHeader('Allow', ['POST', 'OPTIONS']);
         return res.status(405).json({ error: 'Method not allowed' });
