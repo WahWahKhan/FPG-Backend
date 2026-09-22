@@ -6,6 +6,7 @@ import { separateCartItems } from '../../utils/cart-helpers';
 import { put } from '@vercel/blob';
 
 const { pushToQStash, generateCartEmailTemplates } = require('../../lib/qstash-helper');
+const { getBackendCallbackUrl } = require('../../lib/backend-url');
 
 // [OK] ADD CORS CONFIGURATION (same as send-email.js)
 const allowedOrigins = [
@@ -242,21 +243,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         : generateInvoiceEmailTemplates(documentData, customOrderPdfsCount);
 
       // Determine callback URL
-      const callbackUrl = (() => {
-        if (process.env.VERCEL_URL) {
-          return `https://${process.env.VERCEL_URL}/api/send-email`;
-        }
-        if (process.env.API_BASE_URL) {
-          return `${process.env.API_BASE_URL}/api/send-email`;
-        }
-        const TESTING_MODE = process.env.TESTING_MODE === 'true';
-        if (TESTING_MODE) {
-          return process.env.API_BASE_URL_TEST 
-            ? `${process.env.API_BASE_URL_TEST}/api/send-email`
-            : 'http://localhost:3001/api/send-email';
-        }
-        return 'https://fluidpowergroup.com.au/api/send-email';
-      })();
+      const callbackUrl = getBackendCallbackUrl('/api/send-email');
 
       // Prepare email data
       const emailData = {
@@ -422,24 +409,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ].filter(order => order.pdfDataUrl);
 
     // Determine callback URL
-    const callbackUrl = (() => {
-      if (process.env.VERCEL_URL) {
-        return `https://${process.env.VERCEL_URL}/api/send-email`;
-      }
-      
-      if (process.env.API_BASE_URL) {
-        return `${process.env.API_BASE_URL}/api/send-email`;
-      }
-      
-      const TESTING_MODE = process.env.TESTING_MODE === 'true';
-      if (TESTING_MODE) {
-        return process.env.API_BASE_URL_TEST 
-          ? `${process.env.API_BASE_URL_TEST}/api/send-email`
-          : 'http://localhost:3001/api/send-email';
-      }
-      
-      return 'https://fluidpowergroup.com.au/api/send-email';
-    })();
+    const callbackUrl = getBackendCallbackUrl('/api/send-email');
 
     const isLocalMode = callbackUrl.includes('localhost') || callbackUrl.includes('127.0.0.1');
 

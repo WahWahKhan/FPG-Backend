@@ -6,10 +6,28 @@ import swell from 'swell-node';
 import { put } from '@vercel/blob';
 import { setOrderStatus, getOrderStatus, updateOrderStatus } from './order-status.js';
 import { pushToQStash, generateEmailTemplates } from '../../../lib/qstash-helper';
+import { getBackendCallbackUrl } from '../../../lib/backend-url';
 import { generateInvoicePDF } from '../../../lib/invoice/invoice-generator';
 import * as quoteStore from '../../../lib/quote-store';
 import { equalToCent } from '../../../lib/pricing/money';
 import { applyPayPalCors, resolvePayPalCredentials } from '../../../lib/paypal/env';
+import { sendTelegramAlert } from '../../../lib/alerts/telegram';
+
+// ============================================================================
+// Business alert for the two genuinely-abnormal PayPal capture failures
+// (post-capture amount mismatch, and any unhandled error) - deliberately NOT
+// wired to ordinary declines/cancellations, which PayPal's own SDK already
+// handles entirely client-side (onCancel/onError in pages/checkout.tsx) and
+// never reach this file at all. Never let an alert-send failure affect the
+// actual HTTP response to the customer.
+// ============================================================================
+async function notifyBusiness(text) {
+    try {
+        await sendTelegramAlert(text);
+    } catch (err) {
+        console.error('[WARN] Failed to send business PayPal alert:', err.message);
+    }
+}
 
 // ============================================================================
 // SERVER-AUTHORITY: rebuild the order arrays from the persisted server QUOTE.
@@ -101,7 +119,7 @@ function rebuildOrdersFromQuote(quote, attachments) {
             return {
                 id: 'tube360',
                 type: 'tube360_order',
-                name: a.name || 'TUBE360 Custom Tube',
+                name: a.name || 'TUBE360 Custom Order',
                 totalPrice: l.amount,
                 quantity: 1,
                 image: a.image || '',
@@ -627,23 +645,56 @@ export default async function handler(req, res) {
             const capturedValue = captureData.purchase_units?.[0]?.payments?.captures?.[0]?.amount?.value;
             if (capturedValue === undefined || !equalToCent(capturedValue, serverQuote.amountValue)) {
                 console.error(`🚨 POST-CAPTURE MISMATCH for ${orderID}: captured=${capturedValue} quote=${serverQuote.amountValue}`);
+                let refundSucceeded = false;
+                let refundErrorDetail = 'no capture ID available to refund';
                 if (captureId) {
                     try {
-                        await fetch(`${PAYPAL_API_BASE}/v2/payments/captures/${captureId}/refund`, {
+                        const refundResponse = await fetch(`${PAYPAL_API_BASE}/v2/payments/captures/${captureId}/refund`, {
                             method: 'POST',
                             headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
                         });
-                        console.log(`↩️ Refund issued for mismatched capture ${captureId}`);
+                        if (refundResponse.ok) {
+                            refundSucceeded = true;
+                            console.log(`↩️ Refund issued for mismatched capture ${captureId}`);
+                        } else {
+                            refundErrorDetail = `PayPal refund request failed: ${refundResponse.status} ${await refundResponse.text()}`;
+                            console.error('❌ Refund attempt failed:', refundErrorDetail);
+                        }
                     } catch (refundErr) {
+                        refundErrorDetail = refundErr.message;
                         console.error('❌ Refund attempt failed:', refundErr.message);
                     }
                 }
                 setOrderStatus(orderNumber, 'failed', {
-                    error: 'Captured amount did not match server price; refund attempted',
+                    error: refundSucceeded
+                        ? 'Captured amount did not match server price; refund issued'
+                        : 'Captured amount did not match server price; refund ALSO failed',
                     capturedAmount: capturedValue,
                     quoteAmount: serverQuote.amountValue,
+                    refundSucceeded,
                 });
-                return res.status(500).json({ success: false, error: 'Payment amount mismatch detected; the charge has been refunded.' });
+
+                if (refundSucceeded) {
+                    await notifyBusiness(
+                        `⚠️ PayPal post-capture amount mismatch (order ${orderNumber || orderID})\n\n` +
+                        `Captured: ${capturedValue}\nExpected (server quote): ${serverQuote.amountValue}\n\n` +
+                        `The charge was refunded automatically - no customer follow-up needed for the payment ` +
+                        `itself, but this points at a pricing bug or tampering attempt worth investigating.`
+                    );
+                } else {
+                    await notifyBusiness(
+                        `\u{1F6A8}\u{1F6A8} URGENT: PayPal post-capture mismatch AND the auto-refund ALSO failed ` +
+                        `(order ${orderNumber || orderID})\n\n` +
+                        `Captured: ${capturedValue}\nExpected (server quote): ${serverQuote.amountValue}\n` +
+                        `Refund error: ${refundErrorDetail}\n\n` +
+                        `The customer has been charged with NO order created and NO refund issued. ` +
+                        `Please refund manually via the PayPal dashboard and follow up with the customer.`
+                    );
+                }
+
+                return res.status(500).json({ success: false, error: refundSucceeded
+                    ? 'Payment amount mismatch detected; the charge has been refunded.'
+                    : 'Payment amount mismatch detected; automatic refund failed. Please contact support.' });
             }
         }
 
@@ -747,20 +798,7 @@ export default async function handler(req, res) {
         // ============================================================================
 
         // Determine callback URL and local mode early (needed by STEP 5.5 and STEP 6)
-        const callbackUrl = (() => {
-            if (process.env.VERCEL_URL) {
-                return `https://${process.env.VERCEL_URL}/api/send-email`;
-            }
-            if (process.env.API_BASE_URL) {
-                return `${process.env.API_BASE_URL}/api/send-email`;
-            }
-            if (TESTING_MODE) {
-                return process.env.API_BASE_URL_TEST
-                    ? `${process.env.API_BASE_URL_TEST}/api/send-email`
-                    : 'http://localhost:3001/api/send-email';
-            }
-            return 'https://fluidpowergroup.com.au/api/send-email';
-        })();
+        const callbackUrl = getBackendCallbackUrl('/api/send-email');
 
         const isLocalMode = callbackUrl.includes('localhost') || callbackUrl.includes('127.0.0.1');
 
@@ -813,7 +851,7 @@ export default async function handler(req, res) {
                 // TUBE360 orders
                 ...tube360Orders.map(item => ({
                     id: item.id || 'tube360',
-                    name: item.name || 'TUBE360 Custom Tube',
+                    name: item.name || 'TUBE360 Custom Order',
                     quantity: 1,
                     unitPrice: item.totalPrice,
                     subtotal: item.totalPrice,
@@ -1089,17 +1127,24 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error(`❌ Unhandled error for order ${orderID}:`, error);
-        
+
         if (orderNumber) {
             setOrderStatus(orderNumber, 'failed', {
                 error: error.message,
                 failedAt: new Date().toISOString()
             });
         }
-        
-        return res.status(500).json({ 
-            success: false, 
-            error: error.message || 'Internal server error' 
+
+        await notifyBusiness(
+            `\u{1F6A8} Unhandled error during PayPal capture (order ${orderNumber || orderID || 'unknown'})\n\n` +
+            `${error.message || 'Internal server error'}\n\n` +
+            `This is the catch-all for anything unexpected in the capture flow - check Vercel logs for the ` +
+            `full stack trace. The customer may or may not have been charged; verify in the PayPal dashboard.`
+        );
+
+        return res.status(500).json({
+            success: false,
+            error: error.message || 'Internal server error'
         });
     }
 }

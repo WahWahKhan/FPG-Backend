@@ -86,7 +86,7 @@ const base = {
     check(b.setupFee === 25, 'worked example: setup 25', b.setupFee);
     check(b.band === 'small', 'worked example: band small', b.band);
     check(res.isSteelTubesLineOverLength === true, 'worked example: >1000mm triggers freight flag');
-    check(res.name === 'TUBE360 Custom Tube', 'worked example: line name');
+    check(res.name === 'TUBE360 Custom Order', 'worked example: line name');
   });
 
   // 2. Linear bend pricing (5 bends, flat rate, no complexity multiplier):
