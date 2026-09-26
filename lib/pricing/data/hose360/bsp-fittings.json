@@ -1,0 +1,28 @@
+{
+  "family": "BSP 60°",
+  "fullName": "British Standard Pipe",
+  "shapes": [
+    { "id": "bsp-male-straight-tapered", "label": "BSP Male Straight Tapered", "image": "/hose360/bsp_male_straight_tapered.png", "isStraight": false },
+    { "id": "bsp-male-straight-parallel", "label": "BSP Male Straight Parallel", "image": "/hose360/bsp_male_straight_parallel.png", "isStraight": false },
+    { "id": "bsp-female-straight", "label": "BSP Female Straight", "image": "/hose360/bsp_female_straight.png", "isStraight": true },
+    { "id": "bsp-female-45", "label": "BSP Female 45°", "image": "/hose360/bsp_female_45.png", "isStraight": false },
+    { "id": "bsp-female-90", "label": "BSP Female 90°", "image": "/hose360/bsp_female_90.png", "isStraight": false },
+    { "id": "bsp-banjo", "label": "BSP Banjo", "image": "/hose360/bsp_banjo.png", "isStraight": false }
+  ],
+  "sizes": [
+    { "size": "1/8\" - 28", "price": 6.10 },
+    { "size": "1/4\" - 19", "price": 7.28 },
+    { "size": "3/8\" - 19", "price": 11.18 },
+    { "size": "1/2\" - 14", "price": 14.25 },
+    { "size": "3/4\" - 14", "price": 16.25 },
+    { "size": "1\" - 11", "price": 18.48 }
+  ],
+  "compatibilityMatrix": {
+    "1/4\"": ["1/8\" - 28", "1/4\" - 19", "3/8\" - 19"],
+    "3/8\"": ["1/4\" - 19", "3/8\" - 19", "1/2\" - 14"],
+    "1/2\"": ["3/8\" - 19", "1/2\" - 14", "3/4\" - 14"],
+    "5/8\"": ["1/2\" - 14", "3/4\" - 14"],
+    "3/4\"": ["3/4\" - 14", "1\" - 11"],
+    "1\"": ["1\" - 11"]
+  }
+}

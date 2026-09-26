@@ -59,20 +59,25 @@ function rebuildOrdersFromQuote(quote, attachments) {
             };
         });
 
+    // 'pwa' = legacy standalone Hose360 PWA bundle (kept for backward compatibility).
+    // 'hose360' = new native Hose360 frontend, wired into this same secure
+    // create-order -> quote -> capture flow (see HOSE360/DECISIONS.md §5).
+    // Both kinds are reshaped into the same pwaOrders array/email/PDF pipeline;
+    // only `type` differs so order-confirmation emails can tell them apart.
     const pwaOrders = lines
-        .filter((l) => l.kind === 'pwa')
+        .filter((l) => l.kind === 'pwa' || l.kind === 'hose360')
         .map((l) => {
             const a = att(l.cartId);
             return {
                 id: 'hose360',
-                type: 'pwa_order',
+                type: l.kind === 'hose360' ? 'hose360_order' : 'pwa_order',
                 name: a.name || 'HOSE360 Custom Order',
                 totalPrice: l.amount,
                 quantity: 1,
                 image: a.image || '',
                 pdfDataUrl: a.pdfDataUrl,
                 cartId: l.cartId,
-                pwaOrderNumber: `PWA-${l.cartId}`,
+                pwaOrderNumber: `${l.kind === 'hose360' ? 'HOSE360' : 'PWA'}-${l.cartId}`,
             };
         });
 

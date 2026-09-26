@@ -1,0 +1,28 @@
+{
+  "family": "METRIC LIGHT 24°",
+  "fullName": "Metric Light (Cone O-Ring)",
+  "shapes": [
+    { "id": "metric-male-straight", "label": "METRIC LIGHT Male Straight", "image": "/hose360/metric_light_male_straight.png", "isStraight": false },
+    { "id": "metric-female-straight", "label": "METRIC LIGHT Female Straight", "image": "/hose360/metric_light_female_straight.png", "isStraight": true },
+    { "id": "metric-female-45", "label": "METRIC LIGHT Female 45°", "image": "/hose360/metric_light_female_45.png", "isStraight": false },
+    { "id": "metric-female-90", "label": "METRIC LIGHT Female 90°", "image": "/hose360/metric_light_female_90.png", "isStraight": false }
+  ],
+  "sizes": [
+    { "size": "M12 - 1.5", "price": 7.50 },
+    { "size": "M14 - 1.5", "price": 8.40 },
+    { "size": "M16 - 1.5", "price": 8.60 },
+    { "size": "M18 - 1.5", "price": 10.50 },
+    { "size": "M22 - 1.5", "price": 14.65 },
+    { "size": "M26 - 1.5", "price": 18.50 },
+    { "size": "M30 - 2", "price": 22.50 },
+    { "size": "M36 - 2", "price": 28.50 }
+  ],
+  "compatibilityMatrix": {
+    "1/4\"": ["M12 - 1.5", "M14 - 1.5", "M16 - 1.5", "M18 - 1.5"],
+    "3/8\"": ["M18 - 1.5", "M22 - 1.5"],
+    "1/2\"": ["M22 - 1.5", "M26 - 1.5"],
+    "5/8\"": ["M26 - 1.5", "M30 - 2"],
+    "3/4\"": ["M30 - 2", "M36 - 2"],
+    "1\"": ["M36 - 2"]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "family": "O.R.F.S",
+  "fullName": "O-Ring Flat Seal",
+  "shapes": [
+    { "id": "orfs-male-straight", "label": "ORFS Male Straight", "image": "/hose360/orfs_male_straight.png", "isStraight": false },
+    { "id": "orfs-female-straight", "label": "ORFS Female Straight", "image": "/hose360/orfs_female_straight.png", "isStraight": true },
+    { "id": "orfs-female-45", "label": "ORFS Female 45°", "image": "/hose360/orfs_female_45.png", "isStraight": false },
+    { "id": "orfs-female-90", "label": "ORFS Female 90°", "image": "/hose360/orfs_female_90.png", "isStraight": false }
+  ],
+  "sizes": [
+    { "size": "9/16\" - 18", "price": 7.70 },
+    { "size": "11/16\" - 16", "price": 8.85 },
+    { "size": "13/16\" - 16", "price": 10.25 },
+    { "size": "1\" - 14", "price": 16.95 },
+    { "size": "1-3/16\" - 12", "price": 24.50 }
+  ],
+  "compatibilityMatrix": {
+    "1/4\"": ["9/16\" - 18", "11/16\" - 16"],
+    "3/8\"": ["11/16\" - 16", "13/16\" - 16"],
+    "1/2\"": ["13/16\" - 16", "1\" - 14"],
+    "5/8\"": ["1\" - 14", "1-3/16\" - 12"],
+    "3/4\"": ["1\" - 14", "1-3/16\" - 12"],
+    "1\"": ["1-3/16\" - 12"]
+  }
+}

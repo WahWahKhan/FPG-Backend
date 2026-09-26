@@ -1,0 +1,59 @@
+{
+  "hoseSpec": "Two Wire Steel Braided EN 857 2SC",
+  "sizes": [
+    {
+      "size": "1/4\"",
+      "insideDiameterLabel": "1/4 Inch",
+      "pricePerMetre": 12.45,
+      "workingPressurePsi": 6525,
+      "burstPressurePsi": 26100,
+      "bendRadiusMm": 50,
+      "saeEligible": false
+    },
+    {
+      "size": "3/8\"",
+      "insideDiameterLabel": "3/8 Inch",
+      "pricePerMetre": 14.50,
+      "workingPressurePsi": 5438,
+      "burstPressurePsi": 21752,
+      "bendRadiusMm": 75,
+      "saeEligible": false
+    },
+    {
+      "size": "1/2\"",
+      "insideDiameterLabel": "1/2 Inch",
+      "pricePerMetre": 17.65,
+      "workingPressurePsi": 4495,
+      "burstPressurePsi": 17980,
+      "bendRadiusMm": 100,
+      "saeEligible": false
+    },
+    {
+      "size": "5/8\"",
+      "insideDiameterLabel": "5/8 Inch",
+      "pricePerMetre": 19.50,
+      "workingPressurePsi": 4350,
+      "burstPressurePsi": 17400,
+      "bendRadiusMm": 130,
+      "saeEligible": false
+    },
+    {
+      "size": "3/4\"",
+      "insideDiameterLabel": "3/4 Inch",
+      "pricePerMetre": 22.00,
+      "workingPressurePsi": 4162,
+      "burstPressurePsi": 16675,
+      "bendRadiusMm": 200,
+      "saeEligible": true
+    },
+    {
+      "size": "1\"",
+      "insideDiameterLabel": "1 Inch",
+      "pricePerMetre": 28.00,
+      "workingPressurePsi": 3263,
+      "burstPressurePsi": 13050,
+      "bendRadiusMm": 250,
+      "saeEligible": true
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "protectionOptions": [
+    { "label": "NOT REQUIRED", "multiplier": 1.0, "image": null },
+    { "label": "Nylon Hose Sleeve", "multiplier": 1.30, "image": "/hose360/nylon_sleeve.png" },
+    { "label": "Plastic Spiral Cover", "multiplier": 1.40, "image": "/hose360/plastic_spiral.png" },
+    { "label": "Metal Spiral Wrap", "multiplier": 1.50, "image": "/hose360/metal_spiral.png" }
+  ],
+  "pressureTestOptions": [
+    { "label": "Not Required", "flatFee": 0 },
+    { "label": "8000psi", "flatFee": 10.00, "feeAppliedPerHose": true, "image": "/hose360/pressure_testing_diagram.png" }
+  ],
+  "orientationAngles": [
+    { "angle": "0°", "image": "/hose360/0_degrees.png", "helpImage": "/hose360/0_degrees_help.png" },
+    { "angle": "45°", "image": "/hose360/45_degrees.png", "helpImage": "/hose360/45_degrees_help.png" },
+    { "angle": "90°", "image": "/hose360/90_degrees.png", "helpImage": "/hose360/90_degrees_help.png" },
+    { "angle": "135°", "image": "/hose360/135_degrees.png", "helpImage": "/hose360/135_degrees_help.png" },
+    { "angle": "180°", "image": "/hose360/180_degrees.png", "helpImage": "/hose360/180_degrees_help.png" },
+    { "angle": "225°", "image": "/hose360/225_degrees.png", "helpImage": "/hose360/225_degrees_help.png" },
+    { "angle": "270°", "image": "/hose360/270_degrees.png", "helpImage": "/hose360/270_degrees_help.png" },
+    { "angle": "315°", "image": "/hose360/315_degrees.png", "helpImage": "/hose360/315_degrees_help.png" },
+    { "angle": "NOT SURE", "image": null, "helpImage": null }
+  ],
+  "quantityLimits": {
+    "hoseQuantityMin": 1,
+    "hoseQuantityMax": 20,
+    "cutLengthMinMm": 50
+  }
+}

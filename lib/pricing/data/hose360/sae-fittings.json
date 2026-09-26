@@ -1,0 +1,27 @@
+{
+  "saeEligibleHoseSizes": ["3/4\"", "1\""],
+  "codes": [
+    {
+      "code": "Code 61",
+      "pressureRating": "3000psi",
+      "shapes": [
+        { "id": "sae61-straight", "label": "Straight SAE Flange 3000psi", "image": "/hose360/Flange_straight.png", "isStraight": true },
+        { "id": "sae61-45", "label": "45° SAE Flange 3000psi", "image": "/hose360/Flange45_degree.png", "isStraight": false },
+        { "id": "sae61-90", "label": "90° SAE Flange 3000psi", "image": "/hose360/Flange90_degree.png", "isStraight": false }
+      ]
+    },
+    {
+      "code": "Code 62",
+      "pressureRating": "6000psi",
+      "shapes": [
+        { "id": "sae62-straight", "label": "Straight SAE Flange 6000psi", "image": "/hose360/Flange_straight.png", "isStraight": true },
+        { "id": "sae62-45", "label": "45° SAE Flange 6000psi", "image": "/hose360/Flange45_degree.png", "isStraight": false },
+        { "id": "sae62-90", "label": "90° SAE Flange 6000psi", "image": "/hose360/Flange90_degree.png", "isStraight": false }
+      ]
+    }
+  ],
+  "sizes": [
+    { "size": "3/4\"", "price": 60 },
+    { "size": "1\"", "price": 70 }
+  ]
+}
