@@ -205,6 +205,7 @@ async function uploadPDFsToBlob(ordersWithPDFs, orderNumber) {
             // Determine filename based on order type
             const orderType = order.type === 'trac360_order' ? 'tractor' :
                   order.type === 'pwa_order' ? 'assembly' :
+                  order.type === 'hose360_order' ? 'assembly' :
                   order.type === 'function360_order' ? 'function' :
                   order.type === 'tube360_order' ? 'tube' : 'unknown';
             const filename = `orders/${orderNumber}/${orderType}-${order.cartId || i}.pdf`;
@@ -225,6 +226,8 @@ async function uploadPDFsToBlob(ordersWithPDFs, orderNumber) {
             const pdfName = order.type === 'trac360_order' 
                 ? `TRAC360-${order.cartId || 'order'}.pdf`
                 : order.type === 'pwa_order'
+                ? `HOSE360-${order.cartId || 'order'}.pdf`
+                : order.type === 'hose360_order'
                 ? `HOSE360-${order.cartId || 'order'}.pdf`
                 : order.type === 'function360_order'
                 ? `FUNCTION360-${order.cartId || 'order'}.pdf`
