@@ -59,25 +59,20 @@ function rebuildOrdersFromQuote(quote, attachments) {
             };
         });
 
-    // 'pwa' = legacy standalone Hose360 PWA bundle (kept for backward compatibility).
-    // 'hose360' = new native Hose360 frontend, wired into this same secure
-    // create-order -> quote -> capture flow (see HOSE360/DECISIONS.md §5).
-    // Both kinds are reshaped into the same pwaOrders array/email/PDF pipeline;
-    // only `type` differs so order-confirmation emails can tell them apart.
     const pwaOrders = lines
-        .filter((l) => l.kind === 'pwa' || l.kind === 'hose360')
+        .filter((l) => l.kind === 'pwa')
         .map((l) => {
             const a = att(l.cartId);
             return {
                 id: 'hose360',
-                type: l.kind === 'hose360' ? 'hose360_order' : 'pwa_order',
+                type: 'pwa_order',
                 name: a.name || 'HOSE360 Custom Order',
                 totalPrice: l.amount,
                 quantity: 1,
                 image: a.image || '',
                 pdfDataUrl: a.pdfDataUrl,
                 cartId: l.cartId,
-                pwaOrderNumber: `${l.kind === 'hose360' ? 'HOSE360' : 'PWA'}-${l.cartId}`,
+                pwaOrderNumber: `PWA-${l.cartId}`,
             };
         });
 
@@ -205,7 +200,6 @@ async function uploadPDFsToBlob(ordersWithPDFs, orderNumber) {
             // Determine filename based on order type
             const orderType = order.type === 'trac360_order' ? 'tractor' :
                   order.type === 'pwa_order' ? 'assembly' :
-                  order.type === 'hose360_order' ? 'assembly' :
                   order.type === 'function360_order' ? 'function' :
                   order.type === 'tube360_order' ? 'tube' : 'unknown';
             const filename = `orders/${orderNumber}/${orderType}-${order.cartId || i}.pdf`;
@@ -226,8 +220,6 @@ async function uploadPDFsToBlob(ordersWithPDFs, orderNumber) {
             const pdfName = order.type === 'trac360_order' 
                 ? `TRAC360-${order.cartId || 'order'}.pdf`
                 : order.type === 'pwa_order'
-                ? `HOSE360-${order.cartId || 'order'}.pdf`
-                : order.type === 'hose360_order'
                 ? `HOSE360-${order.cartId || 'order'}.pdf`
                 : order.type === 'function360_order'
                 ? `FUNCTION360-${order.cartId || 'order'}.pdf`

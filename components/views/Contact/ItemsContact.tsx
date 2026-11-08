@@ -17,9 +17,9 @@ const ItemsContact = () => {
     },
     {
       label: "Sales",
-      href: "tel:61409517333",
+      href: "tel:+61347203323",
       icon: FiPhone,
-      title: "+61 409 517 333",
+      title: "03 4720 3323",
     },
   ];
 
