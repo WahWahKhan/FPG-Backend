@@ -2,13 +2,12 @@ import clsx from "clsx";
 import siteLinks from "constants/site-links";
 import { HoverContext } from "context/HoverWrapper";
 import React, { useContext, useMemo } from "react";
-import { v4 as uuid } from "uuid";
 
 const NavHeader = () => {
   const { hover, setHover } = useContext(HoverContext);
 
   const pages = useMemo(
-    () => siteLinks.map((page) => ({ ...page, id: uuid() })),
+    () => siteLinks.map((page) => ({ ...page, id: page.href /* unique per link; stable key (was a random uuid) */ })),
     []
   );
 

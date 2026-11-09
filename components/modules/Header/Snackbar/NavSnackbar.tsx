@@ -2,13 +2,12 @@ import Anchor from "@/modules/Anchor";
 import siteLinks from "constants/site-links";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
-import { v4 as uuid } from "uuid";
 
 type INavSnackbarProps = { handleClose: () => void };
 
 const NavSnackbar = ({ handleClose }: INavSnackbarProps) => {
   const pages = useMemo(
-    () => siteLinks.map((page) => ({ ...page, id: uuid() })),
+    () => siteLinks.map((page) => ({ ...page, id: page.href /* unique per link; stable key (was a random uuid) */ })),
     []
   );
 
