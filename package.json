@@ -6,51 +6,49 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "parity": "node scripts/pricing-parity.test.js",
     "test:tube360": "node scripts/tube360-pricing.test.js",
     "nm": "new-component  -x tsx -d components/modules",
     "nv": "new-component  -x tsx -d components/views"
   },
   "dependencies": {
-    "@headlessui/react": "^1.6.1",
+    "@headlessui/react": "^2.2.10",
     "@upstash/redis": "^1.35.6",
     "@vercel/blob": "^2.0.0",
     "axios": "^1.9.0",
-    "body-parser": "^2.2.0",
     "clsx": "^1.1.1",
-    "cors": "^2.8.5",
     "dotenv": "^16.6.1",
-    "express": "^4.21.2",
-    "framer-motion": "^6.2.8",
+    "framer-motion": "^14.10.1",
     "fs": "^0.0.1-security",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
-    "mongoose": "^8.14.1",
-    "next": "12.1.0",
+    "next": "16.4.5",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^7.0.3",
-    "react": "17.0.2",
-    "react-dom": "17.0.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "react-icons": "^4.3.1",
     "react-use": "^17.3.2",
     "swell-node": "^4.0.10",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "@types/node": "^22.10.10",
-    "@types/react": "^17.0.41",
-    "@types/react-dom": "^17.0.14",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@types/uuid": "^8.3.4",
     "autoprefixer": "^10.4.4",
-    "eslint": "8.11.0",
-    "eslint-config-next": "12.1.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.4.5",
     "postcss": "^8.4.12",
     "postcss-preset-env": "^7.6.0",
     "tailwindcss": "^3.0.23",
     "typescript": "^5.7.3"
   },
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
+  },
+  "overrides": {
+    "zod": "^4.6.7"
   }
 }

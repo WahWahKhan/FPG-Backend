@@ -80,7 +80,7 @@ const ProductSlider = ({
             <div className="flex flex-col w-full  group   cursor-pointer   sm:w-56 border-slate-800 border-[1px] p-4 h-full shadow-md">
               <motion.div className="  w-full pt-[100%]  relative transition-all  duration-500   bg-white ">
                 <Image
-                  layout="fill"
+                  fill
                   src={product.image || "/product-4.png"}
                   blurDataURL="/product-2.png"
                   placeholder="blur"

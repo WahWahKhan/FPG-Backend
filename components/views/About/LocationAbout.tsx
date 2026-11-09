@@ -13,9 +13,7 @@ const LocationAbout = () => {
             rel="noreferrer"
           >
             <Image
-              layout="fill"
-              objectFit="cover"
-              objectPosition={"center"}
+              fill style={{ objectFit: "cover", objectPosition: "center" }}
               alt="Map"
               src="/map.png"
             />

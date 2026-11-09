@@ -26,7 +26,7 @@ const ServicesHome = () => {
               key={index}
             >
               <div className="relative w-full h-48 sm:h-28  sm:w-48 bg-slate-200/20 border border-slate-200/10 ">
-                <Image src="/tubeBending.png" alt="Hydraulic tube bending" layout="fill" objectFit="cover" />
+                <Image src="/tubeBending.png" alt="Hydraulic tube bending" fill style={{ objectFit: "cover" }} />
               </div>
               <div className="flex flex-col gap-2 w-full">
                 <div className="text-2xl sm:text-3xl font-semibold">{item}</div>
@@ -47,7 +47,7 @@ const ServicesHome = () => {
               key={index}
             >
               <div className="relative w-full h-48 sm:h-28  sm:w-48 bg-slate-200/20 border border-slate-200/10">
-                <Image src="/tubeFlaring.png" alt="Hydraulic tube flaring" layout="fill" objectFit="cover" />
+                <Image src="/tubeFlaring.png" alt="Hydraulic tube flaring" fill style={{ objectFit: "cover" }} />
               </div>
               <div className="flex flex-col gap-2 w-full">
                 <div className="text-2xl sm:text-3xl font-semibold">{item}</div>
@@ -68,7 +68,7 @@ const ServicesHome = () => {
               key={index}
             >
               <div className="relative w-full h-48 sm:h-28  sm:w-48 bg-slate-200/20 border border-slate-200/10">
-                <Image src="/pressureTesting.png" alt="Hydraulic pressure testing" layout="fill" objectFit="cover" />
+                <Image src="/pressureTesting.png" alt="Hydraulic pressure testing" fill style={{ objectFit: "cover" }} />
               </div>
               <div className="flex flex-col gap-2 w-full">
                 <div className="text-2xl sm:text-3xl font-semibold">{item}</div>
@@ -86,7 +86,7 @@ const ServicesHome = () => {
               key={index}
             >
               <div className="relative w-full h-48 sm:h-28  sm:w-48 bg-slate-200/20 border border-slate-200/10">
-                <Image src="/hoseAssembly.png" alt="Hydraulic hose assembly and crimping" layout="fill" objectFit="cover" />
+                <Image src="/hoseAssembly.png" alt="Hydraulic hose assembly and crimping" fill style={{ objectFit: "cover" }} />
               </div>
               <div className="flex flex-col gap-2 w-full">
                 <div className="text-2xl sm:text-3xl font-semibold">{item}</div>
@@ -105,7 +105,7 @@ const ServicesHome = () => {
               key={index}
             >
               <div className="relative w-full h-48 sm:h-28  sm:w-48 bg-slate-200/20 border border-slate-200/10">
-                <Image src="/laserCutting.jpg" alt="Laser cutting of steel plate" layout="fill" objectFit="cover" />
+                <Image src="/laserCutting.jpg" alt="Laser cutting of steel plate" fill style={{ objectFit: "cover" }} />
               </div>
               <div className="flex flex-col gap-2 w-full">
                 <div className="text-2xl sm:text-3xl font-semibold">{item}</div>
@@ -123,7 +123,7 @@ const ServicesHome = () => {
               key={index}
             >
               <div className="relative w-full h-48 sm:h-28  sm:w-48 bg-slate-200/20 border border-slate-200/10">
-                <Image src="/metalBending.png" alt="Metal plate bending" layout="fill" objectFit="cover" />
+                <Image src="/metalBending.png" alt="Metal plate bending" fill style={{ objectFit: "cover" }} />
               </div>
               <div className="flex flex-col gap-2 w-full">
                 <div className="text-2xl sm:text-3xl font-semibold">{item}</div>

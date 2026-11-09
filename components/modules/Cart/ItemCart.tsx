@@ -19,10 +19,9 @@ const ItemCart = ({ item }: IItemCartProps) => {
         <div className="bg-white w-20 aspect-square p-2 min-w-fit">
           <div className="relative w-full h-full">
             <Image
-              layout="fill"
+              fill style={{ objectFit: "contain" }}
               src="/cartImage.jpeg"
               alt="product"
-              objectFit="contain"
             />
           </div>
         </div>

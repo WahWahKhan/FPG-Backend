@@ -91,7 +91,7 @@ const Header = ({ categories }: { categories: Category[] }) => {
           </div>
         </div>
 
-        <AnimatePresence exitBeforeEnter>
+        <AnimatePresence mode="wait">
           {hover === "Products" && (
             <ProductMenuHeader categories={categories} />
           )}

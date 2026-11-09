@@ -38,7 +38,7 @@ function MyApp({ Component, pageProps, router }: AppProps) {
           </Head>
 
           <AnimatePresence
-            exitBeforeEnter
+            mode="wait"
             onExitComplete={() => window.scrollTo(0, 0)}
           >
             <motion.div

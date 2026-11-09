@@ -34,7 +34,7 @@ const ImageProduct = ({ images }: Props) => {
 
   return (
     <div className="relative col-span-full lg:col-span-6 xl:col-span-7 w-full border rounded-3xl h-full pt-[100%] lg:pt-0 lg:aspect-auto">
-      <AnimatePresence exitBeforeEnter>
+      <AnimatePresence mode="wait">
         <div className="absolute top-0 left-0 h-full w-full p-16">
           <motion.div
             variants={variants}
@@ -50,8 +50,7 @@ const ImageProduct = ({ images }: Props) => {
             <Image
               src={selectedImage}
               alt=""
-              layout="fill"
-              objectFit="contain"
+              fill style={{ objectFit: "contain" }}
             />
           </motion.div>
         </div>

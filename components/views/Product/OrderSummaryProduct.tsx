@@ -66,7 +66,7 @@ const OrderSummaryProduct = ({
   };
 
   return (
-    <AnimatePresence exitBeforeEnter>
+    <AnimatePresence mode="wait">
       {itemsAdded.length > 0 && (
         <motion.div
           className="wrapper px-8 md:px-12"

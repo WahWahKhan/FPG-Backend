@@ -1,6 +1,5 @@
 import {
   AnimatePresence,
-  AnimateSharedLayout,
   LayoutGroup,
   motion,
 } from "framer-motion";
@@ -28,7 +27,7 @@ const ItemDesignHome = ({ title }: ItemDesignHomeProps) => {
           <motion.h2 layout="position" className="text-2xl xl:text-3xl">
             {title}
           </motion.h2>
-          <AnimatePresence exitBeforeEnter>
+          <AnimatePresence mode="wait">
             {hover && (
               <motion.div
                 className="text-lg xl:text-xl font-light hidden lg:block"
@@ -48,7 +47,7 @@ const ItemDesignHome = ({ title }: ItemDesignHomeProps) => {
         src="/hydraulicSystemDesign.jpeg"
         placeholder="blur"
         alt="item"
-        layout="fill"
+        fill
         blurDataURL="https://images.unsplash.com/photo-1502014822147-1aedfb0676e0?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=870&q=80"
       />
     </div>
@@ -72,7 +71,7 @@ const ItemDesignsHome = ({ title }: ItemDesignHomeProps) => {
           <motion.h2 layout="position" className="text-2xl xl:text-3xl">
             {title}
           </motion.h2>
-          <AnimatePresence exitBeforeEnter>
+          <AnimatePresence mode="wait">
             {hover && (
               <motion.div
                 className="text-lg xl:text-xl font-light hidden lg:block"
@@ -93,7 +92,7 @@ const ItemDesignsHome = ({ title }: ItemDesignHomeProps) => {
         src="/drafting.jpeg"
         placeholder="blur"
         alt="item"
-        layout="fill"
+        fill
         blurDataURL="https://images.unsplash.com/photo-1502014822147-1aedfb0676e0?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=870&q=80"
       />
     </div>

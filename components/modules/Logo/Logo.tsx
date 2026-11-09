@@ -12,8 +12,7 @@ const Logo = ({ type = "header" }: ILogoProps) => {
       <div className="relative h-[90px] w-[220px] bg-transparent">
         <Image
           src={"/logo.png"}
-          layout="fill"
-          objectFit="contain"
+          fill style={{ objectFit: "contain" }}
           alt="Site logo"
         />
       </div>

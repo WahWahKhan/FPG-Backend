@@ -2,10 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: [
-      "fluidpowergroup.s3.ap-southeast-2.amazonaws.com",
-      "images.unsplash.com",
-      "cdn.schema.io"
+    remotePatterns: [
+      { protocol: "https", hostname: "fluidpowergroup.s3.ap-southeast-2.amazonaws.com" },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "cdn.schema.io" },
     ],
   },
 };

@@ -53,7 +53,7 @@ const ProductsHeroHome = (props: Props) => {
 
   return (
     <div className="md:max-w-full  md:w-1/2  w-full      h-full flex items-center justify-center mx-auto relative">
-      <AnimatePresence exitBeforeEnter>
+      <AnimatePresence mode="wait">
         <motion.div
           variants={variants}
           className="sm:w-[75%] w-full max-w-sm sm:max-w-full   aspect-square gap-8   overflow-hidden  border rounded-2xl border-slate-200"
@@ -69,8 +69,7 @@ const ProductsHeroHome = (props: Props) => {
           <div className="relative p-4 w-full h-full -z-20">
             <Image
               src={selectedImage}
-              layout="fill"
-              objectFit="cover"
+              fill style={{ objectFit: "cover" }}
               placeholder="blur"
               blurDataURL="https://images.unsplash.com/photo-1515630771457-09367d0ae038?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1770&q=80"
               alt="hero"
