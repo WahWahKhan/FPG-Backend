@@ -129,6 +129,29 @@ function hose360Sweep() {
     const fe = fePrice(cfg);
     ck(near(be, fe), `HOSE360 ${cfg.selectedHose.size} ${cfg.end1Shape} ${cfg.selectedProtection} PT:${cfg.selectedPressure} q${cfg.quantity}`, `FE $${fe} vs BE $${be}`); n++;
   }
+
+  // --- (c) Hose-specific fitting sizes/prices (added 2026-11-12). Mirrors HoseCalculator
+  //     JICPrices.JIC_HOSE_SPECIFIC_PRICES / MetricPrices.METRIC_HOSE_SPECIFIC_PRICES. ---
+  const fc = (shape, size, hose) => _internals.fittingCost(shape, size, false, hose);
+  const throws = (fn) => { try { fn(); return false; } catch (e) { return true; } };
+  for (const shape of ['JIC Male Straight', 'JIC Female Straight', 'JIC Female 45°', 'JIC Female 90°']) {
+    ck(near(fc(shape, '1/2" - 20', '1/4"'), 7.90), `HOSE360 ${shape} 1/2" - 20 on 1/4" hose = 7.90`); n++;
+    ck(throws(() => fc(shape, '1/2" - 20', '3/8"')), `HOSE360 ${shape} 1/2" - 20 rejected on 3/8" hose`); n++;
+    ck(throws(() => fc(shape, '1/2" - 20')), `HOSE360 ${shape} 1/2" - 20 rejected with no hose`); n++;
+    ck(near(fc(shape, '7/16" - 20', '1/4"'), 7.00), `HOSE360 ${shape} 7/16" - 20 unchanged on 1/4" hose`); n++;
+  }
+  for (const shape of ['METRIC LIGHT Male Straight', 'METRIC LIGHT Female Straight', 'METRIC LIGHT Female 45°', 'METRIC LIGHT Female 90°']) {
+    ck(near(fc(shape, 'M16 - 1.5', '3/8"'), 9.50), `HOSE360 ${shape} M16 on 3/8" hose = 9.50`); n++;
+    ck(near(fc(shape, 'M16 - 1.5', '1/4"'), 8.60), `HOSE360 ${shape} M16 on 1/4" hose unchanged 8.60`); n++;
+    ck(near(fc(shape, 'M16 - 1.5'), 8.60), `HOSE360 ${shape} M16 with no hose = general 8.60`); n++;
+    ck(near(fc(shape, 'M18 - 1.5', '3/8"'), 10.50), `HOSE360 ${shape} M18 on 3/8" hose unchanged`); n++;
+  }
+  // Full line: 3/8" hose, Metric M16 both ends, qty 2, 1 m of hose => 14.50 + 2*9.50*2
+  const l1 = priceHose360Line({ orderConfig: { selectedHose: { size: '3/8"' }, end1Shape: 'METRIC LIGHT Male Straight', end1Size: 'M16 - 1.5', end2Shape: 'METRIC LIGHT Female Straight', end2Size: 'M16 - 1.5', quantity: 2, cutLengths: [{ length: '1000' }], selectedProtection: 'NOT REQUIRED', selectedPressure: 'Not Required' } }).amount;
+  ck(near(l1, 14.50 + 2 * 9.50 * 2), 'HOSE360 line 3/8" + M16/M16 q2 = 52.50', `got ${l1}`); n++;
+  // Full line: 1/4" hose, JIC 1/2"-20 end1 + 7/16 end2, qty 1, 0.5 m
+  const l2 = priceHose360Line({ orderConfig: { selectedHose: { size: '1/4"' }, end1Shape: 'JIC Male Straight', end1Size: '1/2" - 20', end2Shape: 'JIC Female Straight', end2Size: '7/16" - 20', quantity: 1, cutLengths: [{ length: '500' }], selectedProtection: 'NOT REQUIRED', selectedPressure: 'Not Required' } }).amount;
+  ck(near(l2, 12.45 * 0.5 + 7.90 + 7.00), 'HOSE360 line 1/4" + JIC 1/2"-20 / 7/16 q1', `got ${l2}`); n++;
   return n;
 }
 
