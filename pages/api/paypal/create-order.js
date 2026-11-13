@@ -39,7 +39,22 @@ function itemsSignature(items) {
     return JSON.stringify(arr.map(stableStringify).sort());
 }
 
+// PayPal access tokens last hours. Reuse one per warm serverless instance instead of logging in on
+// every checkout click (saves ~0.5-1s). Kept in memory only; refreshed 2 minutes before expiry, and
+// dropped if PayPal ever rejects it (see the 401 retry in the handler).
+let cachedToken = null; // { token, expiresAt, key }
+function tokenCacheKey() { return `${PAYPAL_API_BASE}|${PAYPAL_CLIENT_ID}`; }
 async function getPayPalAccessToken() {
+    const now = Date.now();
+    if (cachedToken && cachedToken.key === tokenCacheKey() && cachedToken.expiresAt > now) {
+        return cachedToken.token;
+    }
+    const { token, expiresInSec } = await fetchPayPalAccessToken();
+    cachedToken = { token, key: tokenCacheKey(), expiresAt: now + Math.max(0, (expiresInSec || 0) - 120) * 1000 };
+    return token;
+}
+
+async function fetchPayPalAccessToken() {
     const auth = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString('base64');
     const url = `${PAYPAL_API_BASE}/v1/oauth2/token`;
     const response = await fetch(url, {
@@ -60,7 +75,7 @@ async function getPayPalAccessToken() {
     if (!data.access_token) {
         throw new Error('PayPal response missing access token');
     }
-    return data.access_token;
+    return { token: data.access_token, expiresInSec: Number(data.expires_in) || 0 };
 }
 
 export default async function handler(req, res) {
@@ -98,6 +113,12 @@ export default async function handler(req, res) {
     }
 
     try {
+        // Start the PayPal login now so it runs in parallel with pricing (it is needed in step 3).
+        // The no-op catch only prevents an "unhandled rejection" if pricing throws first; the real
+        // error still surfaces when step 3 awaits it.
+        const accessTokenPromise = getPayPalAccessToken();
+        accessTokenPromise.catch(() => {});
+
         // --- 1. Recompute every price from trusted data. ---
         const currentPricing = await priceCart(items);
         console.log(`🧾 Server-computed total: A$${currentPricing.amountValue} (subtotal ${currentPricing.subtotal}, gst ${currentPricing.gst})`);
@@ -141,7 +162,7 @@ export default async function handler(req, res) {
         }
 
         // --- 3. Create the PayPal order for the SERVER amount. ---
-        const accessToken = await getPayPalAccessToken();
+        let accessToken = await accessTokenPromise;
         const orderPayload = {
             intent: 'CAPTURE',
             purchase_units: [{
@@ -158,15 +179,24 @@ export default async function handler(req, res) {
             },
         };
 
-        const response = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
+        const requestId = `fpg-${Date.now()}`;
+        const createOrderCall = (token) => fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${accessToken}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
-                'PayPal-Request-Id': `fpg-${Date.now()}`,
+                'PayPal-Request-Id': requestId, // same id on retry, so PayPal can never create two orders
             },
             body: JSON.stringify(orderPayload),
         });
+        let response = await createOrderCall(accessToken);
+        if (response.status === 401) {
+            // Cached token was rejected (revoked/expired early): log in fresh and try once more.
+            console.warn('⚠️ PayPal rejected the cached token; refreshing and retrying once.');
+            cachedToken = null;
+            accessToken = await getPayPalAccessToken();
+            response = await createOrderCall(accessToken);
+        }
 
         const responseText = await response.text();
         let responseData;
