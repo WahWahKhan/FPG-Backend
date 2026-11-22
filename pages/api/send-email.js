@@ -1,6 +1,18 @@
 // pages/api/send-email.js
 import fetch from 'node-fetch';
 import { del } from '@vercel/blob';
+const { sendPostmarkEmail, isPostmarkConfigured } = require('../../lib/email/postmark');
+const { sendOrderToTelegram } = require('../../lib/alerts/order-telegram');
+const { isTelegramConfigured } = require('../../lib/alerts/telegram');
+const deliveryStore = require('../../lib/email/delivery-store');
+
+// How long to wait on Microsoft before treating it as down.
+const GRAPH_TIMEOUT_MS = 20000;
+
+// Test hook: pretend Microsoft Graph is down so the Postmark + Telegram
+// fallbacks can be exercised. Ignored on the production deployment.
+const SIMULATE_GRAPH_FAILURE =
+    process.env.EMAIL_SIMULATE_GRAPH_FAILURE === 'true' && process.env.VERCEL_ENV !== 'production';
 
 // ========================================
 // TESTING MODE CONFIGURATION
@@ -56,12 +68,16 @@ async function getGraphAccessToken() {
     params.append('grant_type', 'client_credentials');
 
     try {
+        if (SIMULATE_GRAPH_FAILURE) {
+            throw new Error('Simulated Microsoft outage (EMAIL_SIMULATE_GRAPH_FAILURE=true)');
+        }
         const response = await fetch(tokenEndpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
-            body: params
+            body: params,
+            signal: AbortSignal.timeout(GRAPH_TIMEOUT_MS)
         });
 
         if (!response.ok) {
@@ -73,7 +89,7 @@ async function getGraphAccessToken() {
         return data.access_token;
     } catch (error) {
         console.error('Failed to get Graph access token:', error);
-        throw new Error('Authentication failed');
+        throw new Error(`Authentication failed: ${error.message}`);
     }
 }
 
@@ -88,7 +104,8 @@ async function sendEmailViaGraph(accessToken, emailData, fromEmail) {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(emailData)
+            body: JSON.stringify(emailData),
+            signal: AbortSignal.timeout(GRAPH_TIMEOUT_MS)
         });
 
         if (response.status === 202) {
@@ -353,77 +370,153 @@ export default async function handler(req, res) {
                 console.log(`Processing ${actualPdfAttachments.length} PDF attachment(s) for order ${currentOrderNumber}`);
             }
 
-            // --- Get Graph Access Token ---
-            console.log('Getting Microsoft Graph access token...');
-            const accessToken = await getGraphAccessToken();
-            console.log('Graph access token obtained successfully');
+            // ============================================
+            // Send both halves. Each half has its own backup channel:
+            //   customer: Microsoft Graph -> Postmark email
+            //   business: Microsoft Graph -> Telegram (order details + every PDF)
+            // A half that already went out on an earlier QStash attempt is
+            // skipped (delivery-store), so retries never double-send.
+            // ============================================
+            const customerSubject = `Your Order Confirmation - Order #${currentOrderNumber}`;
+            const businessSubject = `New Order Received - Order #${currentOrderNumber}`;
 
-            // --- Prepare emails with PDF attachments ---
-            const customerEmailData = formatEmailForGraph(
-                customerEmailAddress,
-                `Your Order Confirmation - Order #${currentOrderNumber}`,
-                emailTemplates.customerEmailContent,
-                actualPdfAttachments,
-                currentOrderNumber
-            );
-
-            const businessEmailData = formatEmailForGraph(
-                BUSINESS_EMAIL,
-                `New Order Received - Order #${currentOrderNumber}`,
-                emailTemplates.businessEmailContent,
-                actualPdfAttachments,
-                currentOrderNumber
-            );
-
-            // --- Send emails sequentially ---
             console.log(`Sending emails for order ${currentOrderNumber}`);
             console.log(`Customer email to: ${customerEmailAddress}`);
             console.log(`Business email to: ${BUSINESS_EMAIL}`);
 
-            let results = {
-                customerEmailSent: false,
-                businessEmailSent: false,
-                warnings: []
+            const delivered = await deliveryStore.getDelivered(currentOrderNumber);
+            const results = {
+                customerVia: delivered.customer || null,
+                businessVia: delivered.business || null,
+                errors: []
             };
+            if (results.customerVia || results.businessVia) {
+                console.log(`↩️ Already delivered on an earlier attempt: customer=${results.customerVia || '-'}, business=${results.businessVia || '-'}`);
+            }
 
             // Check if this is a cart request without customer copy
             const isCartRequestNoCustomerCopy = currentOrderNumber.startsWith('CART-') && !emailTemplates.customerEmailContent;
-
-            // Step 1: Send customer email (SKIP if cart request without copy)
-            if (!isCartRequestNoCustomerCopy) {
-                try {
-                    console.log('Sending customer email via Graph API...');
-                    const customerResult = await sendEmailViaGraph(accessToken, customerEmailData, SENDER_EMAIL);
-                    results.customerEmailSent = true;
-                    console.log(`✓ Customer email sent successfully. ID: ${customerResult.messageId}`);
-                } catch (customerError) {
-                    console.error('CRITICAL: Customer email failed:', customerError.message);
-                    return res.status(500).json({ 
-                        success: false, 
-                        error: 'Failed to send order confirmation to customer',
-                        details: customerError.message 
-                    });
-                }
-            } else {
+            if (isCartRequestNoCustomerCopy && !results.customerVia) {
                 console.log('⏭️ Skipping customer email (cart request without customer copy)');
-                results.customerEmailSent = true; // Mark as "sent" to avoid errors
+                results.customerVia = 'skipped';
             }
 
-            // Step 2: Send business email
-            try {
-                console.log('Sending business email via Graph API...');
-                const businessResult = await sendEmailViaGraph(accessToken, businessEmailData, SENDER_EMAIL);
-                results.businessEmailSent = true;
-                console.log(`✓ Business email sent successfully. ID: ${businessResult.messageId}`);
-            } catch (businessError) {
-                console.error('Business email failed (customer email succeeded):', businessError.message);
-                results.warnings.push('Business notification email failed to send');
+            // --- Microsoft Graph token (only if something is still to send) ---
+            let accessToken = null;
+            let graphError = null;
+            if (!results.customerVia || !results.businessVia) {
+                try {
+                    console.log('Getting Microsoft Graph access token...');
+                    accessToken = await getGraphAccessToken();
+                    console.log('Graph access token obtained successfully');
+                } catch (tokenError) {
+                    graphError = tokenError.message;
+                    console.error('⚠️ Microsoft Graph unavailable, using backup channels:', graphError);
+                }
             }
 
+            // --- Step 1: customer email ---
+            if (!results.customerVia) {
+                if (accessToken) {
+                    try {
+                        console.log('Sending customer email via Graph API...');
+                        const customerEmailData = formatEmailForGraph(
+                            customerEmailAddress, customerSubject, emailTemplates.customerEmailContent,
+                            actualPdfAttachments, currentOrderNumber
+                        );
+                        const customerResult = await sendEmailViaGraph(accessToken, customerEmailData, SENDER_EMAIL);
+                        results.customerVia = 'graph';
+                        console.log(`✓ Customer email sent successfully. ID: ${customerResult.messageId}`);
+                    } catch (customerError) {
+                        console.error('⚠️ Customer email via Graph failed:', customerError.message);
+                        results.errors.push(`customer/graph: ${customerError.message}`);
+                    }
+                } else {
+                    results.errors.push(`customer/graph: ${graphError}`);
+                }
+
+                if (!results.customerVia) {
+                    if (isPostmarkConfigured()) {
+                        try {
+                            console.log('📮 Sending customer email via Postmark backup...');
+                            const pm = await sendPostmarkEmail({
+                                to: customerEmailAddress,
+                                subject: TESTING_MODE ? `[TEST] ${customerSubject}` : customerSubject,
+                                html: emailTemplates.customerEmailContent,
+                                replyTo: BUSINESS_EMAIL,
+                                attachments: actualPdfAttachments,
+                                tag: 'order-confirmation-backup'
+                            });
+                            results.customerVia = 'postmark';
+                            console.log(`✓ Customer email sent via Postmark. ID: ${pm.messageId}`);
+                        } catch (pmError) {
+                            console.error('❌ Postmark backup failed:', pmError.message);
+                            results.errors.push(`customer/postmark: ${pmError.message}`);
+                        }
+                    } else {
+                        console.error('❌ Postmark backup not configured (POSTMARK_SERVER_TOKEN / POSTMARK_FROM_EMAIL)');
+                        results.errors.push('customer/postmark: not configured');
+                    }
+                }
+                if (results.customerVia) {
+                    await deliveryStore.markDelivered(currentOrderNumber, 'customer', results.customerVia);
+                }
+            }
+
+            // --- Step 2: business email (always attempted, even if the customer half failed) ---
+            if (!results.businessVia) {
+                if (accessToken) {
+                    try {
+                        console.log('Sending business email via Graph API...');
+                        const businessEmailData = formatEmailForGraph(
+                            BUSINESS_EMAIL, businessSubject, emailTemplates.businessEmailContent,
+                            actualPdfAttachments, currentOrderNumber
+                        );
+                        const businessResult = await sendEmailViaGraph(accessToken, businessEmailData, SENDER_EMAIL);
+                        results.businessVia = 'graph';
+                        console.log(`✓ Business email sent successfully. ID: ${businessResult.messageId}`);
+                    } catch (businessError) {
+                        console.error('⚠️ Business email via Graph failed:', businessError.message);
+                        results.errors.push(`business/graph: ${businessError.message}`);
+                    }
+                } else {
+                    results.errors.push(`business/graph: ${graphError}`);
+                }
+
+                if (!results.businessVia) {
+                    if (isTelegramConfigured()) {
+                        try {
+                            console.log(`📨 Sending business copy to Telegram (${actualPdfAttachments.length} PDF(s))...`);
+                            await sendOrderToTelegram({
+                                orderNumber: currentOrderNumber,
+                                paypalCaptureID: payload.paypalCaptureID,
+                                userDetails,
+                                testingMode: TESTING_MODE,
+                                reason: 'Microsoft email failed'
+                            }, actualPdfAttachments);
+                            results.businessVia = 'telegram';
+                            console.log('✓ Business copy delivered to Telegram');
+                        } catch (tgError) {
+                            console.error('❌ Telegram backup failed:', tgError.message);
+                            results.errors.push(`business/telegram: ${tgError.message}`);
+                        }
+                    } else {
+                        console.error('❌ Telegram backup not configured (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)');
+                        results.errors.push('business/telegram: not configured');
+                    }
+                }
+                if (results.businessVia) {
+                    await deliveryStore.markDelivered(currentOrderNumber, 'business', results.businessVia);
+                }
+            }
+
+            const allDelivered = Boolean(results.customerVia && results.businessVia);
+
             // ============================================
-            // Clean up Blob storage after successful send
+            // Clean up Blob storage only once BOTH halves are out - a retry
+            // still needs the PDFs otherwise.
             // ============================================
-            if (blobUrls && blobUrls.length > 0) {
+            if (allDelivered && blobUrls && blobUrls.length > 0) {
                 console.log(`🗑️ Cleaning up ${blobUrls.length} PDF(s) from Vercel Blob...`);
                 
                 for (const blobInfo of blobUrls) {
@@ -439,27 +532,33 @@ export default async function handler(req, res) {
             }
 
             // --- Determine response ---
-            if (results.customerEmailSent && results.businessEmailSent) {
-                res.status(200).json({ 
+            // 200 only when both halves are delivered (by any channel), so
+            // QStash stops retrying. Otherwise 500 -> QStash retries, and the
+            // halves already delivered are skipped next time.
+            const summary = {
+                customer: results.customerVia || 'FAILED',
+                business: results.businessVia || 'FAILED',
+                attachmentCount: actualPdfAttachments?.length || 0,
+                testingMode: TESTING_MODE
+            };
+            if (allDelivered) {
+                const usedBackup = results.customerVia === 'postmark' || results.businessVia === 'telegram';
+                console.log(`✅ Order ${currentOrderNumber} emails done: customer=${summary.customer}, business=${summary.business}`);
+                res.status(200).json({
                     success: true,
-                    message: 'Order processed and all emails sent successfully via Microsoft Graph',
-                    method: 'Microsoft Graph API',
-                    attachmentCount: actualPdfAttachments?.length || 0,
-                    testingMode: TESTING_MODE
-                });
-            } else if (results.customerEmailSent && !results.businessEmailSent) {
-                res.status(200).json({ 
-                    success: true,
-                    message: 'Order processed and customer notified successfully via Microsoft Graph',
-                    warnings: results.warnings,
-                    method: 'Microsoft Graph API',
-                    attachmentCount: actualPdfAttachments?.length || 0,
-                    testingMode: TESTING_MODE
+                    message: usedBackup
+                        ? 'Order emails delivered using backup channels'
+                        : 'Order processed and all emails sent successfully via Microsoft Graph',
+                    ...summary,
+                    warnings: results.errors
                 });
             } else {
-                res.status(500).json({ 
-                    success: false, 
-                    error: 'Unexpected error in email processing' 
+                console.error(`❌ Order ${currentOrderNumber} emails incomplete: customer=${summary.customer}, business=${summary.business}`);
+                res.status(500).json({
+                    success: false,
+                    error: 'Order emails not fully delivered; will retry',
+                    ...summary,
+                    details: results.errors
                 });
             }
 

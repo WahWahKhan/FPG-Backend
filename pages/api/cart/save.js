@@ -14,6 +14,8 @@ import * as quoteStore from '../../../lib/quote-store';
 import { generateSavedCartEmailTemplates } from '../../../lib/qstash-helper';
 import { priceCart } from '../../../lib/pricing';
 const { applyCors, resolveSiteBase } = require('../../../lib/tube360/http');
+const { sendPostmarkEmail, isPostmarkConfigured } = require('../../../lib/email/postmark');
+const { sendTelegramAlert, isTelegramConfigured } = require('../../../lib/alerts/telegram');
 
 const TESTING_MODE = process.env.TESTING_MODE === 'true';
 const AZURE_TENANT_ID = process.env.AZURE_TENANT_ID;
@@ -47,6 +49,10 @@ function checkRateLimit(identifier) {
 
 // --- Microsoft Graph (self-contained; mirrors send-email.js) ---
 async function getGraphAccessToken() {
+    // Same test hook as send-email.js; ignored on the production deployment.
+    if (process.env.EMAIL_SIMULATE_GRAPH_FAILURE === 'true' && process.env.VERCEL_ENV !== 'production') {
+        throw new Error('Simulated Microsoft outage (EMAIL_SIMULATE_GRAPH_FAILURE=true)');
+    }
     const params = new URLSearchParams();
     params.append('client_id', AZURE_CLIENT_ID);
     params.append('client_secret', AZURE_CLIENT_SECRET);
@@ -176,19 +182,66 @@ export default async function handler(req, res) {
             }
         );
 
-        const accessToken = await getGraphAccessToken();
-
-        // Customer copy is the priority; business copy is best-effort.
-        await sendEmailViaGraph(accessToken, email.trim(), 'Your saved cart - FluidPower Group', templates.customerEmailContent);
-        let businessNotified = false;
+        const customerSubject = 'Your saved cart - FluidPower Group';
+        let accessToken = null;
         try {
-            await sendEmailViaGraph(accessToken, BUSINESS_EMAIL, `Cart saved for later${customerName ? ` - ${customerName}` : ''}`, templates.businessEmailContent);
-            businessNotified = true;
-        } catch (bizErr) {
-            console.error('[WARN] Business save-cart notification failed:', bizErr.message);
+            accessToken = await getGraphAccessToken();
+        } catch (tokenErr) {
+            console.error('[WARN] Microsoft Graph unavailable for save-cart, using backups:', tokenErr.message);
         }
 
-        console.log(`[OK] Cart saved (token ${token}); customer emailed${businessNotified ? ', business notified' : ''}.`);
+        // Customer copy is the priority: Graph, then the Postmark backup.
+        let customerVia = null;
+        if (accessToken) {
+            try {
+                await sendEmailViaGraph(accessToken, email.trim(), customerSubject, templates.customerEmailContent);
+                customerVia = 'graph';
+            } catch (custErr) {
+                console.error('[WARN] Save-cart customer email via Graph failed:', custErr.message);
+            }
+        }
+        if (!customerVia && isPostmarkConfigured()) {
+            try {
+                await sendPostmarkEmail({
+                    to: email.trim(),
+                    subject: TESTING_MODE ? `[TEST] ${customerSubject}` : customerSubject,
+                    html: templates.customerEmailContent,
+                    replyTo: BUSINESS_EMAIL,
+                    tag: 'saved-cart-backup',
+                });
+                customerVia = 'postmark';
+            } catch (pmErr) {
+                console.error('[WARN] Save-cart Postmark backup failed:', pmErr.message);
+            }
+        }
+        if (!customerVia) {
+            throw new Error('Save-cart customer email failed on Microsoft Graph and the Postmark backup');
+        }
+
+        // Business copy is best-effort: Graph, then a Telegram note.
+        let businessVia = null;
+        if (accessToken) {
+            try {
+                await sendEmailViaGraph(accessToken, BUSINESS_EMAIL, `Cart saved for later${customerName ? ` - ${customerName}` : ''}`, templates.businessEmailContent);
+                businessVia = 'graph';
+            } catch (bizErr) {
+                console.error('[WARN] Business save-cart notification failed:', bizErr.message);
+            }
+        }
+        if (!businessVia && isTelegramConfigured()) {
+            try {
+                await sendTelegramAlert(
+                    `${TESTING_MODE ? '[TEST] ' : ''}Cart saved for later - business email could not be sent\n\n` +
+                    `Name: ${customerName || 'N/A'}\nEmail: ${email.trim()}\nItems: ${items.length}\n` +
+                    `Open the cart: ${checkoutUrl}`
+                );
+                businessVia = 'telegram';
+            } catch (tgErr) {
+                console.error('[WARN] Save-cart Telegram note failed:', tgErr.message);
+            }
+        }
+
+        console.log(`[OK] Cart saved (token ${token}); customer emailed via ${customerVia}; business ${businessVia ? `notified via ${businessVia}` : 'NOT notified'}.`);
         return res.status(200).json({ success: true, token });
     } catch (err) {
         console.error('[ERR] Save cart failed:', err);

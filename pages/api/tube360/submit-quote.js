@@ -11,7 +11,9 @@
 //      "<root>/<ref> - <customer>" and MOVE the files into it.
 //   3. Email the BUSINESS (folder + file links that only signed-in staff can
 //      open, customer details, Reply-To = customer) - this one must succeed.
+//      If Microsoft Graph fails, the same details go to the owner's Telegram.
 //   4. Email the CUSTOMER a confirmation (file NAMES only) - best-effort.
+//      If Microsoft Graph fails, it goes through Postmark instead.
 //   5. Once a day (Upstash lock, no cron): delete stale files in _incoming.
 //
 // Privacy: no customer data is stored by the website. The quote folder lives
@@ -28,6 +30,9 @@ import { validateTube360Spec } from '../../../lib/pricing/tube360';
 import { PricingError } from '../../../lib/pricing/errors';
 import { businessEmail, isMailConfigured, getGraphAccessToken, sendGraphMail, TESTING_MODE } from '../../../lib/graph-mail';
 import { generateTube360QuoteEmailTemplates, buildInvoiceBuilderQuoteLink } from '../../../lib/qstash-helper';
+import { sendPostmarkEmail, isPostmarkConfigured } from '../../../lib/email/postmark';
+import { isTelegramConfigured } from '../../../lib/alerts/telegram';
+import { sendQuoteToTelegram } from '../../../lib/alerts/quote-telegram';
 
 const limiter = createRateLimiter(5, 60 * 60 * 1000); // 5 submissions / hour / (email and IP)
 
@@ -146,32 +151,86 @@ export default async function handler(req, res) {
     { testingMode: TESTING_MODE, businessEmailDisplay: businessEmail() }
   );
 
-  let accessToken;
+  // Business copy MUST get through: Graph, else Telegram (backup added after
+  // the Nov 2026 Microsoft 365 outage). Customer copy: Graph, else Postmark.
+  let accessToken = null;
   try {
     accessToken = await getGraphAccessToken();
-    await sendGraphMail(accessToken, {
-      to: businessEmail(),
-      subject: `Tube360 quote request ${ref} - ${contact.name}`,
-      html: templates.businessEmailContent,
-      replyTo: contact.email,
-    });
   } catch (err) {
-    // Files are safely in SharePoint under this ref even if the email failed.
-    console.error(`[ERR] tube360 ${ref}: business email failed:`, err.message);
+    console.error(`[WARN] tube360 ${ref}: Graph token failed, using backups:`, err.message);
+  }
+
+  const businessSubject = `Tube360 quote request ${ref} - ${contact.name}`;
+  let businessVia = null;
+  let graphError = accessToken ? null : 'Microsoft email unavailable';
+  if (accessToken) {
+    try {
+      await sendGraphMail(accessToken, {
+        to: businessEmail(),
+        subject: businessSubject,
+        html: templates.businessEmailContent,
+        replyTo: contact.email,
+      });
+      businessVia = 'graph';
+    } catch (err) {
+      graphError = 'Microsoft email failed';
+      console.error(`[WARN] tube360 ${ref}: business email via Graph failed:`, err.message);
+    }
+  }
+  if (!businessVia && isTelegramConfigured()) {
+    try {
+      await sendQuoteToTelegram({
+        ref,
+        contact,
+        labels: cfg.labelsFor(entry, spec),
+        spec: { totalLengthMm: spec.totalLengthMm, quantity: spec.quantity },
+        notes: notesText,
+        files: moved,
+        folderUrl: folder.webUrl,
+        replyQuoteUrl,
+        testingMode: TESTING_MODE,
+        reason: graphError,
+      });
+      businessVia = 'telegram';
+    } catch (err) {
+      console.error(`[ERR] tube360 ${ref}: Telegram backup failed:`, err.message);
+    }
+  }
+  if (!businessVia) {
+    // Files are safely in SharePoint under this ref even if nobody was told.
+    console.error(`[ERR] tube360 ${ref}: business could not be notified by Graph or Telegram`);
     return res.status(502).json({ error: 'We could not submit your request just now. Please try again.' });
   }
 
-  let customerEmailed = false;
-  try {
-    await sendGraphMail(accessToken, {
-      to: contact.email,
-      subject: `We've received your Tube360 drawing - ${ref}`,
-      html: templates.customerEmailContent,
-    });
-    customerEmailed = true;
-  } catch (err) {
-    console.error(`[WARN] tube360 ${ref}: customer confirmation failed:`, err.message);
+  const customerSubject = `We've received your Tube360 drawing - ${ref}`;
+  let customerVia = null;
+  if (accessToken) {
+    try {
+      await sendGraphMail(accessToken, {
+        to: contact.email,
+        subject: customerSubject,
+        html: templates.customerEmailContent,
+      });
+      customerVia = 'graph';
+    } catch (err) {
+      console.error(`[WARN] tube360 ${ref}: customer confirmation via Graph failed:`, err.message);
+    }
   }
+  if (!customerVia && isPostmarkConfigured()) {
+    try {
+      await sendPostmarkEmail({
+        to: contact.email,
+        subject: TESTING_MODE ? `[TEST] ${customerSubject}` : customerSubject,
+        html: templates.customerEmailContent,
+        replyTo: businessEmail(),
+        tag: 'tube360-quote-backup',
+      });
+      customerVia = 'postmark';
+    } catch (err) {
+      console.error(`[WARN] tube360 ${ref}: customer confirmation via Postmark failed:`, err.message);
+    }
+  }
+  const customerEmailed = Boolean(customerVia);
 
   // ---- 7. Daily housekeeping of _incoming (no cron; at most once a day) ----
   try {
@@ -184,6 +243,6 @@ export default async function handler(req, res) {
   }
 
   // Log without PII.
-  console.log(`[OK] tube360 quote ${ref}: ${moved.length} file(s), business notified, customerEmailed=${customerEmailed}`);
+  console.log(`[OK] tube360 quote ${ref}: ${moved.length} file(s), business via ${businessVia}, customer via ${customerVia || 'NONE'}`);
   return res.status(200).json({ success: true, ref, customerEmailed });
 }

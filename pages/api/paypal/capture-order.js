@@ -1098,10 +1098,43 @@ export default async function handler(req, res) {
                 });
             } else {
                 console.error(`❌ Failed to process order ${orderNumber} emails:`, qstashResult.error);
-                updateOrderStatus(orderNumber, { 
+                updateOrderStatus(orderNumber, {
                     emailsQueued: false,
                     qstashError: qstashResult.error
                 });
+
+                // QStash unreachable: run the email route directly once, so the
+                // customer still gets an email (Graph or Postmark) and the
+                // business still gets its copy (Graph or Telegram). Slower for
+                // the customer on this rare path, but nothing is lost.
+                try {
+                    console.log('📧 QStash failed - calling send-email directly as a fallback...');
+                    const directResponse = await fetch(callbackUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-server-key': process.env.VALID_SERVER_KEY
+                        },
+                        body: JSON.stringify(emailData)
+                    });
+                    const directText = await directResponse.text();
+                    console.log(`📧 Direct send-email result: HTTP ${directResponse.status} ${directText.slice(0, 300)}`);
+                    updateOrderStatus(orderNumber, { emailsSent: directResponse.ok, sentDirectly: true });
+                    if (!directResponse.ok) {
+                        await notifyBusiness(
+                            `\u{1F6A8} Order ${orderNumber}: email queue (QStash) failed AND the direct email attempt failed.\n\n` +
+                            `Customer: ${userDetails.firstName || ''} ${userDetails.lastName || ''} <${userDetails.email || 'no email'}>\n` +
+                            `PayPal capture: ${captureId}\nCheck the PayPal dashboard and contact the customer.`
+                        );
+                    }
+                } catch (directError) {
+                    console.error('❌ Direct send-email fallback failed:', directError.message);
+                    await notifyBusiness(
+                        `\u{1F6A8} Order ${orderNumber}: email queue (QStash) failed and the direct email attempt errored (${directError.message}).\n\n` +
+                        `Customer: ${userDetails.firstName || ''} ${userDetails.lastName || ''} <${userDetails.email || 'no email'}>\n` +
+                        `PayPal capture: ${captureId}\nCheck the PayPal dashboard and contact the customer.`
+                    );
+                }
             }
             
             // Mark as completed
