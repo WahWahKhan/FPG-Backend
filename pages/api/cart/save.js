@@ -167,7 +167,7 @@ export default async function handler(req, res) {
         // 7-day price-hold messaging (the actual server-side lock lands in slice 2).
         const holdDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
         const priceHoldUntil = holdDate.toLocaleDateString('en-AU', {
-            year: 'numeric', month: 'long', day: 'numeric',
+            year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Australia/Melbourne',
         });
 
         const templates = generateSavedCartEmailTemplates(
