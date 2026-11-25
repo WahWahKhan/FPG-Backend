@@ -293,6 +293,12 @@ export default async function handler(req, res) {
                 console.log(`📥 Downloading ${blobUrls.length} PDF(s) from Vercel Blob...`);
                 
                 for (const blobInfo of blobUrls) {
+                    // The invoice entry used to carry `filename` instead of
+                    // `name`, so its PDF arrived as "attachment.pdf". Accept
+                    // either, else use the Blob file name (INV-FPG-....pdf).
+                    const blobName = blobInfo.name || blobInfo.filename
+                        || decodeURIComponent(String(blobInfo.url || '').split('/').pop().split('?')[0])
+                        || `Order-${orderNumber}.pdf`;
                     try {
                         const response = await fetch(blobInfo.url);
                         if (!response.ok) {
@@ -303,13 +309,13 @@ export default async function handler(req, res) {
                         const base64Data = buffer.toString('base64');
                         
                         actualPdfAttachments.push({
-                            name: blobInfo.name,
+                            name: blobName,
                             contentBytes: base64Data
                         });
                         
-                        console.log(`✅ Downloaded from Blob: ${blobInfo.name} (${(buffer.length / 1024).toFixed(2)}KB)`);
+                        console.log(`✅ Downloaded from Blob: ${blobName} (${(buffer.length / 1024).toFixed(2)}KB)`);
                     } catch (error) {
-                        console.error(`❌ Failed to download ${blobInfo.name} from Blob:`, error.message);
+                        console.error(`❌ Failed to download ${blobName} from Blob:`, error.message);
                     }
                 }
                 

@@ -896,7 +896,7 @@ export default async function handler(req, res) {
                     invoiceBuffer,
                     { access: 'public', contentType: 'application/pdf' }
                 );
-                invoiceBlobUrl = { url: invoiceBlob.url, filename: `INV-${orderNumber}.pdf`, type: 'invoice' };
+                invoiceBlobUrl = { url: invoiceBlob.url, name: `INV-${orderNumber}.pdf`, filename: `INV-${orderNumber}.pdf`, type: 'invoice' };
                 console.log(`✅ Invoice PDF uploaded: ${invoiceBlob.url}`);
             } else {
                 console.log('📎 LOCAL MODE: Skipping invoice PDF Blob upload');
